@@ -1,0 +1,86 @@
+:root {
+  --color-bg: #f6f2ea;
+  --color-bg-alt: #efe9dc;
+  --color-white: #ffffff;
+  --color-ink: #2a2a24;
+  --color-ink-soft: #524f46;
+  --color-ink-mute: #6a665c;
+  --color-ink-faint: #9a9686;
+  --color-accent: #c67c4e;
+  --color-green: #2e3a2a;
+  --color-hero-bg: #14140f;
+  --color-flow-bg: #3d3a34;
+  --color-footer-bg: #2e3a2a;
+  --color-footer-text: #e8e4d8;
+  --color-footer-muted: #b9b6a8;
+  --color-footer-copyright: #7c7a6c;
+
+  --font-serif: 'Shippori Mincho', serif;
+  --font-sans: 'Zen Kaku Gothic New', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+}
+
+a {
+  color: var(--color-green);
+  text-decoration: underline;
+}
+
+a:hover {
+  color: var(--color-accent);
+}
+
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #fbf8f2;
+}
+
+@keyframes heroKenBurns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes scShine {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
