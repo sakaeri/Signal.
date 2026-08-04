@@ -25,13 +25,69 @@ interface PaymentSectionProps {
 }
 
 const APPEARANCE = {
-  theme: 'stripe' as const,
+  theme: 'flat' as const,
   variables: {
-    colorPrimary: '#2E3A2A',
-    colorText: '#2A2A24',
+    colorPrimary: '#c67c4e',
+    colorText: '#2a2a24',
+    colorTextSecondary: '#6a665c',
     colorDanger: '#b3452f',
     fontFamily: "'Zen Kaku Gothic New', sans-serif",
-    borderRadius: '4px',
+    fontSizeBase: '16px',
+    borderRadius: '0px',
+    spacingGridRow: '20px',
+  },
+  rules: {
+    '.Label': {
+      fontSize: '12px',
+      letterSpacing: '0.08em',
+      color: '#6a665c',
+      fontWeight: '400',
+      marginBottom: '8px',
+    },
+    '.Input': {
+      border: 'none',
+      borderBottom: '1px solid rgba(42, 42, 36, 0.3)',
+      borderRadius: '0',
+      padding: '10px 0',
+      backgroundColor: 'transparent',
+      boxShadow: 'none',
+    },
+    '.Input:focus': {
+      border: 'none',
+      borderBottom: '1px solid #c67c4e',
+      boxShadow: 'none',
+      outline: 'none',
+    },
+    '.Input--invalid': {
+      boxShadow: 'none',
+      borderBottomColor: '#b3452f',
+      color: '#2a2a24',
+    },
+    '.Tab': {
+      border: 'none',
+      borderBottom: '1px solid rgba(42, 42, 36, 0.14)',
+      borderRadius: '0',
+      boxShadow: 'none',
+      backgroundColor: 'transparent',
+      padding: '10px 4px',
+    },
+    '.Tab:hover': {
+      backgroundColor: 'rgba(42, 42, 36, 0.04)',
+      boxShadow: 'none',
+    },
+    '.Tab--selected': {
+      border: 'none',
+      borderBottom: '1px solid #c67c4e',
+      backgroundColor: 'transparent',
+      boxShadow: 'none',
+    },
+    '.TabLabel': {
+      color: '#2a2a24',
+      fontWeight: '500',
+    },
+    '.TabIcon': {
+      fill: '#2a2a24',
+    },
   },
 };
 
@@ -54,7 +110,7 @@ function StripeFields({
   return (
     <div className="apply-payment-element-wrap">
       <PaymentElement
-        options={{ layout: 'tabs' }}
+        options={{ layout: 'tabs', wallets: { link: 'never' } }}
         onChange={(e) => onReadyChange(e.complete)}
       />
     </div>
