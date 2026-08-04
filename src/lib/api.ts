@@ -13,12 +13,16 @@ export interface ApplicationPayload {
   paymentIntentId: string | null;
 }
 
-/** Calls the create-payment-intent Edge Function, which looks the price up server-side. */
+/**
+ * Calls the create-payment-intent Edge Function, which looks the price up server-side.
+ * Deployed under the slug "rapid-handler" (Supabase's editor auto-named it before it
+ * was renamed, and renaming a function's display name doesn't change its slug/URL).
+ */
 export async function createPaymentIntent(eventId: string): Promise<{ clientSecret: string }> {
   if (!isSupabaseConfigured || !supabase) {
     throw new Error('Supabase is not configured.');
   }
-  const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+  const { data, error } = await supabase.functions.invoke('rapid-handler', {
     body: { eventId },
   });
   if (error) throw error;
