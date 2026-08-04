@@ -3,9 +3,9 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useBooking } from '../context/BookingContext';
 import { useSiteData } from '../context/SiteDataContext';
 import { COUNTRY_OPTIONS } from '../i18n/translations';
-import { submitApplication } from '../lib/api';
+import { submitApplication, createPaymentIntent } from '../lib/api';
 import { isStripeConfigured } from '../lib/stripe';
-import PaymentSection from './PaymentSection';
+import PaymentSection, { type StripeCheckoutContext } from './PaymentSection';
 import './ApplyForm.css';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -44,6 +44,7 @@ export default function ApplyForm() {
   const { events } = useSiteData();
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [paymentReady, setPaymentReady] = useState(false);
+  const [stripeCtx, setStripeCtx] = useState<StripeCheckoutContext | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -82,13 +83,49 @@ export default function ApplyForm() {
   // Reset per-payment-method readiness whenever the selected event (and thus amount) changes.
   useEffect(() => {
     setPaymentReady(false);
+    setStripeCtx(null);
   }, [eventId]);
+
+  const genericError = lang === 'ja' ? '送信に失敗しました。もう一度お試しください。' : 'Something went wrong. Please try again.';
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!canSubmit || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
+
+    let paymentIntentId: string | null = null;
+
+    if (isStripeConfigured) {
+      if (!stripeCtx) {
+        setSubmitError(genericError);
+        setSubmitting(false);
+        return;
+      }
+      try {
+        const { error: elementsError } = await stripeCtx.elements.submit();
+        if (elementsError) throw new Error(elementsError.message ?? genericError);
+
+        const { clientSecret } = await createPaymentIntent(eventId);
+
+        const { error: confirmError, paymentIntent } = await stripeCtx.stripe.confirmPayment({
+          elements: stripeCtx.elements,
+          clientSecret,
+          confirmParams: { return_url: window.location.href },
+          redirect: 'if_required',
+        });
+        if (confirmError) throw new Error(confirmError.message ?? genericError);
+        if (!paymentIntent || (paymentIntent.status !== 'succeeded' && paymentIntent.status !== 'processing')) {
+          throw new Error(genericError);
+        }
+        paymentIntentId = paymentIntent.id;
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : genericError);
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       await submitApplication({
         eventId,
@@ -100,10 +137,17 @@ export default function ApplyForm() {
         emergencyRelation: form.emergencyRelation,
         emergencyPhone: form.emergencyPhone,
         message: form.message,
+        paymentIntentId,
       });
       setSubmitted(true);
     } catch {
-      setSubmitError(lang === 'ja' ? '送信に失敗しました。もう一度お試しください。' : 'Something went wrong. Please try again.');
+      setSubmitError(
+        paymentIntentId
+          ? lang === 'ja'
+            ? `決済は完了しましたが、申し込み情報の保存に失敗しました。このお問い合わせ番号を添えてご連絡ください: ${paymentIntentId}`
+            : `Payment succeeded but saving your application failed. Please contact us with this reference: ${paymentIntentId}`
+          : genericError,
+      );
     } finally {
       setSubmitting(false);
     }
@@ -238,6 +282,7 @@ export default function ApplyForm() {
             <PaymentSection
               amountJpy={amountJpy}
               onReadyChange={setPaymentReady}
+              onStripeReady={setStripeCtx}
               fallback={{
                 card: form.card,
                 expiry: form.expiry,

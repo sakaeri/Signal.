@@ -10,17 +10,25 @@ export interface ApplicationPayload {
   emergencyRelation: string;
   emergencyPhone: string;
   message: string;
+  paymentIntentId: string | null;
+}
+
+/** Calls the create-payment-intent Edge Function, which looks the price up server-side. */
+export async function createPaymentIntent(eventId: string): Promise<{ clientSecret: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('Supabase is not configured.');
+  }
+  const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+    body: { eventId },
+  });
+  if (error) throw error;
+  if (!data?.clientSecret) throw new Error(data?.error ?? 'Failed to start payment.');
+  return { clientSecret: data.clientSecret as string };
 }
 
 /**
  * Submits a completed application to the `applications` table in Supabase
  * (insert-only for the anon role — see the RLS policy in the project setup).
- *
- * Card payment still needs a separate server-side step this static frontend
- * can't do alone: something with your Stripe *secret* key (a Supabase Edge
- * Function is the natural place) must create a PaymentIntent and return its
- * client_secret, which the browser then confirms via `stripe.confirmPayment()`.
- * See https://stripe.com/docs/payments/quickstart.
  */
 export async function submitApplication(payload: ApplicationPayload): Promise<{ ok: true }> {
   if (!isSupabaseConfigured || !supabase) {
@@ -41,6 +49,7 @@ export async function submitApplication(payload: ApplicationPayload): Promise<{ 
     emergency_relation: payload.emergencyRelation,
     emergency_phone: payload.emergencyPhone,
     message: payload.message || null,
+    payment_intent_id: payload.paymentIntentId,
   });
 
   if (error) {

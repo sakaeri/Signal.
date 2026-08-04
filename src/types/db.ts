@@ -44,4 +44,5 @@ export interface DbApplication {
   emergency_relation: string;
   emergency_phone: string;
   message: string | null;
+  payment_intent_id: string | null;
 }

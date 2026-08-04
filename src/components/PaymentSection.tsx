@@ -1,13 +1,19 @@
-import { useMemo } from 'react';
-import { Elements, PaymentElement } from '@stripe/react-stripe-js';
-import type { StripeElementsOptionsMode } from '@stripe/stripe-js';
+import { useEffect, useMemo } from 'react';
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import type { Stripe, StripeElements, StripeElementsOptionsMode } from '@stripe/stripe-js';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getStripe, isStripeConfigured } from '../lib/stripe';
 import './ApplyForm.css';
 
+export interface StripeCheckoutContext {
+  stripe: Stripe;
+  elements: StripeElements;
+}
+
 interface PaymentSectionProps {
   amountJpy: number;
   onReadyChange: (ready: boolean) => void;
+  onStripeReady: (ctx: StripeCheckoutContext | null) => void;
   fallback: {
     card: string;
     expiry: string;
@@ -29,7 +35,22 @@ const APPEARANCE = {
   },
 };
 
-function StripeFields({ onReadyChange }: { onReadyChange: (ready: boolean) => void }) {
+function StripeFields({
+  onReadyChange,
+  onStripeReady,
+}: {
+  onReadyChange: (ready: boolean) => void;
+  onStripeReady: (ctx: StripeCheckoutContext | null) => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+
+  useEffect(() => {
+    onStripeReady(stripe && elements ? { stripe, elements } : null);
+    return () => onStripeReady(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stripe, elements]);
+
   return (
     <div className="apply-payment-element-wrap">
       <PaymentElement
@@ -93,7 +114,7 @@ function FallbackFields({ fallback }: { fallback: PaymentSectionProps['fallback'
   );
 }
 
-export default function PaymentSection({ amountJpy, onReadyChange, fallback }: PaymentSectionProps) {
+export default function PaymentSection({ amountJpy, onReadyChange, onStripeReady, fallback }: PaymentSectionProps) {
   const { t } = useLanguage();
 
   const options: StripeElementsOptionsMode = useMemo(
@@ -101,6 +122,7 @@ export default function PaymentSection({ amountJpy, onReadyChange, fallback }: P
       mode: 'payment',
       amount: Math.max(amountJpy, 1),
       currency: 'jpy',
+      paymentMethodTypes: ['card'],
       appearance: APPEARANCE,
     }),
     [amountJpy],
@@ -111,7 +133,7 @@ export default function PaymentSection({ amountJpy, onReadyChange, fallback }: P
       <div className="apply-payment-info-label">{t.paymentInfoLabel}</div>
       {isStripeConfigured ? (
         <Elements key={amountJpy} stripe={getStripe()} options={options}>
-          <StripeFields onReadyChange={onReadyChange} />
+          <StripeFields onReadyChange={onReadyChange} onStripeReady={onStripeReady} />
         </Elements>
       ) : (
         <FallbackFields fallback={fallback} />
