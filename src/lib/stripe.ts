@@ -1,12 +1,7 @@
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
 
-/**
- * TODO: replace with your real Stripe publishable key from
- * https://dashboard.stripe.com/apikeys (pk_test_... while testing,
- * pk_live_... in production). Never put a secret key (sk_...) here —
- * this file ships to the browser.
- */
-export const STRIPE_PUBLISHABLE_KEY = 'pk_test_REPLACE_WITH_YOUR_STRIPE_PUBLISHABLE_KEY';
+export const STRIPE_PUBLISHABLE_KEY =
+  'pk_live_51Te94JCDMRWUJewZu8bTMUmJ9dQNNGxyzOYJ2qQIWXgRaAoNH4m1ZUDGOfhIBlb9vrTiIa8KQodDQdntoTZjItZ500gRH13LXW';
 
 export const isStripeConfigured =
   STRIPE_PUBLISHABLE_KEY.startsWith('pk_') && !STRIPE_PUBLISHABLE_KEY.includes('REPLACE');
