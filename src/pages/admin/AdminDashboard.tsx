@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import EventsAdmin from './EventsAdmin';
 import ApplicationsAdmin from './ApplicationsAdmin';
@@ -8,7 +9,7 @@ import './Admin.css';
 type Tab = 'events' | 'applications' | 'images';
 
 export default function AdminDashboard() {
-  const { signOut } = useAuth();
+  const { session, loading, signOut } = useAuth();
   const [tab, setTab] = useState<Tab>('events');
 
   return (
@@ -30,9 +31,25 @@ export default function AdminDashboard() {
             写真
           </button>
         </div>
-        <button type="button" className="admin-button admin-button-secondary" onClick={() => signOut()}>
-          ログアウト
-        </button>
+        {!loading && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {session ? (
+              <>
+                <span className="admin-muted">{session.user.email}</span>
+                <button type="button" className="admin-button admin-button-secondary" onClick={() => signOut()}>
+                  ログアウト
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="admin-error">未ログイン(保存・削除・アップロードはできません)</span>
+                <Link to="/admin/login" className="admin-button">
+                  ログイン
+                </Link>
+              </>
+            )}
+          </div>
+        )}
       </div>
       <div className="admin-body">
         {tab === 'events' && <EventsAdmin />}

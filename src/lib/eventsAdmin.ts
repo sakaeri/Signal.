@@ -18,6 +18,9 @@ export interface EventInput {
   placeEn: string;
 }
 
+const RLS_DENIED_MESSAGE =
+  'ログインしていないか、権限がないため保存/削除できませんでした。/admin/login からログインしてから再度お試しください。';
+
 function toRow(input: EventInput) {
   return {
     start_date: input.startDate,
@@ -55,20 +58,23 @@ export async function fetchAdminEvents(): Promise<{ events: DbEvent[]; images: D
 
 export async function createEvent(input: EventInput): Promise<void> {
   const db = requireSupabase();
-  const { error } = await db.from('events').insert(toRow(input));
+  const { data, error } = await db.from('events').insert(toRow(input)).select('id');
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error(RLS_DENIED_MESSAGE);
 }
 
 export async function updateEvent(id: string, input: EventInput): Promise<void> {
   const db = requireSupabase();
-  const { error } = await db.from('events').update(toRow(input)).eq('id', id);
+  const { data, error } = await db.from('events').update(toRow(input)).eq('id', id).select('id');
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error(RLS_DENIED_MESSAGE);
 }
 
 export async function deleteEvent(id: string): Promise<void> {
   const db = requireSupabase();
-  const { error } = await db.from('events').delete().eq('id', id);
+  const { data, error } = await db.from('events').delete().eq('id', id).select('id');
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error(RLS_DENIED_MESSAGE);
 }
 
 /** Uploads a file and replaces the event's single thumbnail (deletes the previous one, if any). */
@@ -79,24 +85,29 @@ export async function setEventThumbnail(eventId: string, file: File, previous?: 
     await db.from('event_images').delete().eq('id', previous.id);
     await deleteMedia(previous.storage_path).catch(() => {});
   }
-  const { error } = await db
+  const { data, error } = await db
     .from('event_images')
-    .insert({ event_id: eventId, role: 'thumbnail', storage_path: path, position: 0 });
+    .insert({ event_id: eventId, role: 'thumbnail', storage_path: path, position: 0 })
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error(RLS_DENIED_MESSAGE);
 }
 
 export async function addGalleryImage(eventId: string, file: File, position: number): Promise<void> {
   const db = requireSupabase();
   const path = await uploadMedia(`events/${eventId}/gallery`, file);
-  const { error } = await db
+  const { data, error } = await db
     .from('event_images')
-    .insert({ event_id: eventId, role: 'gallery', storage_path: path, position });
+    .insert({ event_id: eventId, role: 'gallery', storage_path: path, position })
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error(RLS_DENIED_MESSAGE);
 }
 
 export async function removeEventImage(image: DbEventImage): Promise<void> {
   const db = requireSupabase();
-  const { error } = await db.from('event_images').delete().eq('id', image.id);
+  const { data, error } = await db.from('event_images').delete().eq('id', image.id).select('id');
   if (error) throw error;
+  if (!data || data.length === 0) throw new Error(RLS_DENIED_MESSAGE);
   await deleteMedia(image.storage_path).catch(() => {});
 }
