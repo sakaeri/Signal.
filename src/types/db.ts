@@ -1,20 +1,20 @@
+/** Shape returned by the get_events_with_remaining() RPC (used everywhere events are read). */
 export interface DbEvent {
   id: string;
-  sort_order: number;
+  start_date: string;
+  end_date: string | null;
   capacity: number;
   remaining: number;
   price: number;
   shuttle: boolean;
-  checkin_time_ja: string;
-  checkin_time_en: string;
+  shuttle_location_ja: string | null;
+  shuttle_location_en: string | null;
+  checkin_time_start: string;
+  checkin_time_end: string | null;
   title_ja: string;
   title_en: string;
   place_ja: string;
   place_en: string;
-  date_label_ja: string;
-  date_label_en: string;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface DbEventImage {

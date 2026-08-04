@@ -1,10 +1,10 @@
 export interface EventRecord {
   id: string;
-  sortOrder: number;
   capacity: number;
   remaining: number;
   price: number;
   shuttle: boolean;
+  shuttleLocation: { ja: string; en: string };
   checkinTime: { ja: string; en: string };
   title: { ja: string; en: string };
   place: { ja: string; en: string };

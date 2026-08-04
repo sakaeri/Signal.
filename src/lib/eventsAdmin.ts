@@ -3,38 +3,36 @@ import { uploadMedia, deleteMedia } from './storage';
 import type { DbEvent, DbEventImage } from '../types/db';
 
 export interface EventInput {
-  id: string;
-  sortOrder: number;
+  startDate: string;
+  endDate: string;
   capacity: number;
-  remaining: number;
   price: number;
   shuttle: boolean;
-  checkinTimeJa: string;
-  checkinTimeEn: string;
+  shuttleLocationJa: string;
+  shuttleLocationEn: string;
+  checkinTimeStart: string;
+  checkinTimeEnd: string;
   titleJa: string;
   titleEn: string;
   placeJa: string;
   placeEn: string;
-  dateLabelJa: string;
-  dateLabelEn: string;
 }
 
 function toRow(input: EventInput) {
   return {
-    id: input.id,
-    sort_order: input.sortOrder,
+    start_date: input.startDate,
+    end_date: input.endDate || null,
     capacity: input.capacity,
-    remaining: input.remaining,
     price: input.price,
     shuttle: input.shuttle,
-    checkin_time_ja: input.checkinTimeJa,
-    checkin_time_en: input.checkinTimeEn,
+    shuttle_location_ja: input.shuttle ? input.shuttleLocationJa || null : null,
+    shuttle_location_en: input.shuttle ? input.shuttleLocationEn || null : null,
+    checkin_time_start: input.checkinTimeStart,
+    checkin_time_end: input.checkinTimeEnd || null,
     title_ja: input.titleJa,
     title_en: input.titleEn,
     place_ja: input.placeJa,
     place_en: input.placeEn,
-    date_label_ja: input.dateLabelJa,
-    date_label_en: input.dateLabelEn,
     updated_at: new Date().toISOString(),
   };
 }
@@ -47,7 +45,7 @@ function requireSupabase() {
 export async function fetchAdminEvents(): Promise<{ events: DbEvent[]; images: DbEventImage[] }> {
   const db = requireSupabase();
   const [eventsRes, imagesRes] = await Promise.all([
-    db.from('events').select('*').order('sort_order', { ascending: true }),
+    db.rpc('get_events_with_remaining'),
     db.from('event_images').select('*').order('position', { ascending: true }),
   ]);
   if (eventsRes.error) throw eventsRes.error;

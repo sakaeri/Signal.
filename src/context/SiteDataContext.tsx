@@ -45,7 +45,7 @@ export function SiteDataProvider({ children }: { children: ReactNode }) {
     const { signal, clear } = withTimeout(FETCH_TIMEOUT_MS);
     try {
       const [eventsRes, imagesRes] = await Promise.all([
-        supabase.from('events').select('*').order('sort_order', { ascending: true }).abortSignal(signal),
+        supabase.rpc('get_events_with_remaining').abortSignal(signal),
         supabase.from('event_images').select('*').order('position', { ascending: true }).abortSignal(signal),
       ]);
       if (eventsRes.error) throw eventsRes.error;
