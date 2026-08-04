@@ -1,10 +1,10 @@
 import { useLanguage } from '../i18n/LanguageContext';
-import type { RawEvent } from '../data/events';
+import type { EventRecord } from '../types/event';
 import ImagePlaceholder from './ImagePlaceholder';
 import './Events.css';
 
 interface EventCardProps {
-  event: RawEvent;
+  event: EventRecord;
   isSelected: boolean;
   onSelect: () => void;
   onOpenGallery: () => void;
@@ -12,26 +12,28 @@ interface EventCardProps {
 
 export default function EventCard({ event, isSelected, onSelect, onOpenGallery }: EventCardProps) {
   const { lang, t } = useLanguage();
-  const copy = event[lang];
+  const title = event.title[lang];
+  const place = event.place[lang];
+  const dateLabel = event.dateLabel[lang];
   const checkinTime = event.checkinTime[lang];
   const checkinPlace = event.shuttle ? t.meetShuttleValue : t.meetOnsiteValue;
-  const remainingLabel = lang === 'ja' ? `残り${event.capacity}名` : `${event.capacity} left`;
+  const remainingLabel = lang === 'ja' ? `残り${event.remaining}名` : `${event.remaining} left`;
   const buttonLabel = isSelected ? (lang === 'ja' ? '選択中' : 'Selected') : remainingLabel;
 
   return (
     <div className="event-card">
-      <button type="button" className="event-card-image" onClick={onOpenGallery} aria-label={`View photos of ${copy.place}`}>
-        <ImagePlaceholder caption={copy.place} />
-        <div className="event-card-date-badge">{copy.dateLabel}</div>
+      <button type="button" className="event-card-image" onClick={onOpenGallery} aria-label={`View photos of ${place}`}>
+        {event.thumbnailUrl ? <img src={event.thumbnailUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <ImagePlaceholder caption={place} />}
+        <div className="event-card-date-badge">{dateLabel}</div>
       </button>
       <div className="event-card-body">
-        <div className="event-card-place">{copy.place}</div>
-        <div className="event-card-title">{copy.title}</div>
+        <div className="event-card-place">{place}</div>
+        <div className="event-card-title">{title}</div>
         <div className="event-card-checkin">
           {t.checkinLabel} {checkinTime} ({checkinPlace})
         </div>
         <div className="event-card-footer">
-          <span className="event-card-price">¥{event.price}/人</span>
+          <span className="event-card-price">¥{event.price.toLocaleString('en-US')}/人</span>
           <button
             type="button"
             className={`event-card-select${isSelected ? ' is-selected' : ''}`}

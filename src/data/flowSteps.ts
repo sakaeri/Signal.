@@ -7,6 +7,7 @@ import flowImage4 from '../assets/images/flow-image-4.png';
 
 interface FlowStepRaw {
   num: string;
+  slot: string;
   jaEyebrow: string;
   enEyebrow: string;
   image: string;
@@ -17,6 +18,7 @@ interface FlowStepRaw {
 const FLOW_STEPS: FlowStepRaw[] = [
   {
     num: '01',
+    slot: 'flow-image-0',
     jaEyebrow: '到着',
     enEyebrow: 'Arrival',
     image: flowImage0,
@@ -25,6 +27,7 @@ const FLOW_STEPS: FlowStepRaw[] = [
   },
   {
     num: '02',
+    slot: 'flow-image-1',
     jaEyebrow: '手放す',
     enEyebrow: 'Disconnect',
     image: flowImage1,
@@ -33,6 +36,7 @@ const FLOW_STEPS: FlowStepRaw[] = [
   },
   {
     num: '03',
+    slot: 'flow-image-2',
     jaEyebrow: '好きなように',
     enEyebrow: 'As You Wish',
     image: flowImage2,
@@ -41,6 +45,7 @@ const FLOW_STEPS: FlowStepRaw[] = [
   },
   {
     num: '04',
+    slot: 'flow-image-3',
     jaEyebrow: '手紙を書く',
     enEyebrow: 'Write a Letter',
     image: flowImage3,
@@ -49,6 +54,7 @@ const FLOW_STEPS: FlowStepRaw[] = [
   },
   {
     num: '05',
+    slot: 'flow-image-4',
     jaEyebrow: '帰還',
     enEyebrow: 'Return',
     image: flowImage4,
@@ -65,12 +71,12 @@ export interface FlowStep {
   hasNext: boolean;
 }
 
-export function getFlowSteps(lang: Lang): FlowStep[] {
+export function getFlowSteps(lang: Lang, imageOverrides: Record<string, string> = {}): FlowStep[] {
   return FLOW_STEPS.map((fs, i) => ({
     num: fs.num,
     eyebrow: lang === 'ja' ? fs.jaEyebrow : fs.enEyebrow,
     body: fs[lang],
-    image: fs.image,
+    image: imageOverrides[fs.slot] ?? fs.image,
     hasNext: i < FLOW_STEPS.length - 1,
   }));
 }

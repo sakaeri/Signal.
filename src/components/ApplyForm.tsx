@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useBooking } from '../context/BookingContext';
-import { RAW_EVENTS } from '../data/events';
+import { useSiteData } from '../context/SiteDataContext';
 import { COUNTRY_OPTIONS } from '../i18n/translations';
 import { submitApplication } from '../lib/api';
 import { isStripeConfigured } from '../lib/stripe';
@@ -41,6 +41,7 @@ const INITIAL_FORM: FormState = {
 export default function ApplyForm() {
   const { t, lang } = useLanguage();
   const { selectedEventId, setSelectedEventId } = useBooking();
+  const { events } = useSiteData();
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [paymentReady, setPaymentReady] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -48,12 +49,12 @@ export default function ApplyForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const eventId = selectedEventId ?? '';
-  const selectedEvent = RAW_EVENTS.find((ev) => ev.id === eventId) ?? null;
-  const amountJpy = selectedEvent ? Number(selectedEvent.price.replace(/,/g, '')) : 0;
+  const selectedEvent = events.find((ev) => ev.id === eventId) ?? null;
+  const amountJpy = selectedEvent ? selectedEvent.price : 0;
 
-  const eventOptions = RAW_EVENTS.map((ev) => ({
+  const eventOptions = events.map((ev) => ({
     id: ev.id,
-    label: `${ev[lang].title} (${ev[lang].dateLabel})`,
+    label: `${ev.title[lang]} (${ev.dateLabel[lang]})`,
   }));
 
   const field = (key: keyof FormState) => ({
@@ -230,7 +231,7 @@ export default function ApplyForm() {
             {selectedEvent && (
               <div className="apply-payment-summary">
                 <span className="apply-payment-summary-label">{t.paymentAmountLabel}</span>
-                <span className="apply-payment-summary-amount">¥{selectedEvent.price}</span>
+                <span className="apply-payment-summary-amount">¥{selectedEvent.price.toLocaleString('en-US')}</span>
               </div>
             )}
 

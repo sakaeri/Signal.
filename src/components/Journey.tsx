@@ -1,10 +1,12 @@
 import { useLanguage } from '../i18n/LanguageContext';
+import { useSiteData } from '../context/SiteDataContext';
 import { getFlowSteps } from '../data/flowSteps';
 import './Journey.css';
 
 export default function Journey() {
   const { t, lang } = useLanguage();
-  const steps = getFlowSteps(lang);
+  const { siteImages } = useSiteData();
+  const steps = getFlowSteps(lang, siteImages);
 
   return (
     <section id="journey" className="journey-section">

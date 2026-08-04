@@ -31,6 +31,13 @@
   color: var(--color-ink-soft);
 }
 
+.events-status {
+  text-align: center;
+  color: var(--color-ink-mute);
+  font-size: 14px;
+  padding: 40px 0;
+}
+
 .events-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
