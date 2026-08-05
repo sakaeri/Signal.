@@ -130,6 +130,48 @@ function dbEventToForm(ev: DbEvent): EventInput {
   };
 }
 
+interface InlineEditableTextProps {
+  as: 'div' | 'span';
+  className?: string;
+  value: string;
+  placeholder: string;
+  isActive: boolean;
+  onActivate: () => void;
+  onChange: (v: string) => void;
+  onDone: () => void;
+}
+
+/** Click-to-edit text used inside the live preview card: shows plain text, swaps to an input while active. */
+function InlineEditableText({ as: Tag, className, value, placeholder, isActive, onActivate, onChange, onDone }: InlineEditableTextProps) {
+  if (isActive) {
+    return (
+      <input
+        autoFocus
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onDone}
+        onKeyDown={(e) => e.key === 'Enter' && onDone()}
+        className={className}
+        style={{
+          display: 'block',
+          font: 'inherit',
+          fontWeight: 'inherit',
+          color: 'inherit',
+          border: 'none',
+          borderBottom: '1px dashed #c67c4e',
+          background: 'transparent',
+          width: '100%',
+        }}
+      />
+    );
+  }
+  return (
+    <Tag className={className} onClick={onActivate} style={{ cursor: 'pointer' }}>
+      {value || placeholder}
+    </Tag>
+  );
+}
+
 export default function EventsAdmin() {
   const [events, setEvents] = useState<DbEvent[]>([]);
   const [images, setImages] = useState<DbEventImage[]>([]);
@@ -145,13 +187,27 @@ export default function EventsAdmin() {
   const [formError, setFormError] = useState<string | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [activeInlineField, setActiveInlineField] = useState<string | null>(null);
+  const [pendingThumbnailFile, setPendingThumbnailFile] = useState<File | null>(null);
+  const [pendingThumbnailPreviewUrl, setPendingThumbnailPreviewUrl] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isCreating || editingId) {
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [isCreating, editingId]);
+
+  useEffect(() => {
+    if (!pendingThumbnailFile) {
+      setPendingThumbnailPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(pendingThumbnailFile);
+    setPendingThumbnailPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingThumbnailFile]);
 
   async function reload() {
     setLoading(true);
@@ -178,6 +234,8 @@ export default function EventsAdmin() {
     setEditingId(null);
     setDuplicateSourceId(null);
     setFormError(null);
+    setPendingThumbnailFile(null);
+    setActiveInlineField(null);
   }
 
   function startEdit(ev: DbEvent) {
@@ -186,6 +244,8 @@ export default function EventsAdmin() {
     setIsCreating(false);
     setDuplicateSourceId(null);
     setFormError(null);
+    setPendingThumbnailFile(null);
+    setActiveInlineField(null);
   }
 
   function startDuplicate(ev: DbEvent) {
@@ -194,6 +254,8 @@ export default function EventsAdmin() {
     setEditingId(null);
     setDuplicateSourceId(ev.id);
     setFormError(null);
+    setPendingThumbnailFile(null);
+    setActiveInlineField(null);
   }
 
   function cancelEdit() {
@@ -201,6 +263,8 @@ export default function EventsAdmin() {
     setIsCreating(false);
     setDuplicateSourceId(null);
     setFormError(null);
+    setPendingThumbnailFile(null);
+    setActiveInlineField(null);
   }
 
   async function handleSave() {
@@ -212,12 +276,14 @@ export default function EventsAdmin() {
       if (isCreating) {
         const newId = await createEvent(form);
         if (duplicateSourceId) await duplicateEventImages(duplicateSourceId, newId);
+        if (pendingThumbnailFile) await setEventThumbnail(newId, pendingThumbnailFile);
         await reload();
         // Switch straight into editing the new event so the image upload section
         // (only shown while editing an existing event) is immediately available.
         setIsCreating(false);
         setDuplicateSourceId(null);
         setEditingId(newId);
+        setPendingThumbnailFile(null);
       } else if (editingId) {
         await updateEvent(editingId, form);
         await reload();
@@ -237,6 +303,15 @@ export default function EventsAdmin() {
       await reload();
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  /** Preview image was tapped and a file chosen: upload now if editing an existing event, otherwise stage it for upload right after the event is created. */
+  function handlePreviewThumbnailPicked(file: File) {
+    if (editingId) {
+      handleThumbnailUpload(editingId, file);
+    } else {
+      setPendingThumbnailFile(file);
     }
   }
 
@@ -313,7 +388,8 @@ export default function EventsAdmin() {
   const previewCheckinTime = form.checkinTimeStart
     ? formatCheckinTime(form.checkinTimeStart, form.checkinTimeEnd || null, 'ja')
     : '(集合時間を入力してください)';
-  const previewThumbnailUrl = editingThumbnail ? publicUrlFor(editingThumbnail.storage_path) : null;
+  const previewThumbnailUrl =
+    pendingThumbnailPreviewUrl ?? (editingThumbnail ? publicUrlFor(editingThumbnail.storage_path) : null);
 
   const upcomingEvents = events.filter((ev) => !isPastEvent(ev));
   const pastEvents = events
@@ -520,47 +596,139 @@ export default function EventsAdmin() {
           <div className="admin-section-title" style={{ fontSize: 17 }}>
             {isCreating ? (duplicateSourceId ? '複製して新規作成' : '新規イベント') : `編集: ${editingEvent?.title_ja}`}
           </div>
-          <div className="admin-form-section-title">基本情報(公開ページに表示されます)</div>
-          <div className="admin-form-grid">
-            <div className="admin-field">
-              <label>タイトル(日本語)</label>
-              <input value={form.titleJa} onChange={(e) => setForm((f) => ({ ...f, titleJa: e.target.value }))} />
+          <div className="admin-form-section-title">プレビュー(タップして直接入力できます)</div>
+          <div className="event-card" style={{ maxWidth: 460, marginBottom: 8 }}>
+            <div className="event-card-image" style={{ cursor: 'pointer' }} onClick={() => thumbnailInputRef.current?.click()} role="button" tabIndex={0}>
+              {previewThumbnailUrl ? (
+                <img src={previewThumbnailUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              ) : (
+                <ImagePlaceholder caption="タップして画像を追加" />
+              )}
+              <div
+                className="event-card-date-badge"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (activeInlineField !== 'dates') setActiveInlineField('dates');
+                }}
+              >
+                {activeInlineField === 'dates' ? (
+                  <span onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <input
+                      type="date"
+                      autoFocus
+                      value={form.startDate}
+                      onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+                      style={{ font: 'inherit', border: 'none', background: 'transparent' }}
+                    />
+                    <input
+                      type="date"
+                      value={form.endDate}
+                      onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+                      style={{ font: 'inherit', border: 'none', background: 'transparent' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setActiveInlineField(null)}
+                      style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: 700 }}
+                    >
+                      ✓
+                    </button>
+                  </span>
+                ) : (
+                  previewDateLabel
+                )}
+              </div>
             </div>
+            <input
+              ref={thumbnailInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handlePreviewThumbnailPicked(file);
+                e.target.value = '';
+              }}
+            />
+            <div className="event-card-body">
+              <InlineEditableText
+                as="div"
+                className="event-card-place admin-tap-edit"
+                value={form.placeJa}
+                placeholder="開催場所(タップして入力)"
+                isActive={activeInlineField === 'placeJa'}
+                onActivate={() => setActiveInlineField('placeJa')}
+                onChange={(v) => setForm((f) => ({ ...f, placeJa: v }))}
+                onDone={() => setActiveInlineField(null)}
+              />
+              <InlineEditableText
+                as="div"
+                className="event-card-title admin-tap-edit"
+                value={form.titleJa}
+                placeholder="イベントタイトル(タップして入力)"
+                isActive={activeInlineField === 'titleJa'}
+                onActivate={() => setActiveInlineField('titleJa')}
+                onChange={(v) => setForm((f) => ({ ...f, titleJa: v }))}
+                onDone={() => setActiveInlineField(null)}
+              />
+              <div className="event-card-checkin">
+                集合時間 {previewCheckinTime} ({form.shuttle ? `送迎ポイント: ${form.shuttleLocationJa || '(未入力)'}` : '現地'})
+              </div>
+              <div className="event-card-footer">
+                <span className="event-card-price admin-tap-edit">
+                  ¥
+                  {activeInlineField === 'price' ? (
+                    <input
+                      type="number"
+                      autoFocus
+                      value={form.price}
+                      onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
+                      onBlur={() => setActiveInlineField(null)}
+                      onKeyDown={(e) => e.key === 'Enter' && setActiveInlineField(null)}
+                      style={{ font: 'inherit', color: 'inherit', border: 'none', borderBottom: '1px dashed #c67c4e', background: 'transparent', width: 90 }}
+                    />
+                  ) : (
+                    <span onClick={() => setActiveInlineField('price')} style={{ cursor: 'pointer' }}>
+                      {form.price.toLocaleString('en-US')}
+                    </span>
+                  )}
+                  /人
+                </span>
+                <span className="event-card-select admin-tap-edit">
+                  残り
+                  {activeInlineField === 'capacity' ? (
+                    <input
+                      type="number"
+                      autoFocus
+                      value={form.capacity}
+                      onChange={(e) => setForm((f) => ({ ...f, capacity: Number(e.target.value) }))}
+                      onBlur={() => setActiveInlineField(null)}
+                      onKeyDown={(e) => e.key === 'Enter' && setActiveInlineField(null)}
+                      style={{ font: 'inherit', color: 'inherit', border: 'none', background: 'transparent', width: 50 }}
+                    />
+                  ) : (
+                    <span onClick={() => setActiveInlineField('capacity')} style={{ cursor: 'pointer' }}>
+                      {form.capacity}
+                    </span>
+                  )}
+                  名 ▼
+                </span>
+              </div>
+            </div>
+          </div>
+          <p className="admin-muted" style={{ marginTop: -4, marginBottom: 8 }}>
+            画像・場所・タイトル・日付・価格・定員は、上のプレビューを直接タップして入力できます。
+          </p>
+
+          <div className="admin-form-section-title">英語表記(海外のお客様向け)</div>
+          <div className="admin-form-grid">
             <div className="admin-field">
               <label>Title (English)</label>
               <input value={form.titleEn} onChange={(e) => setForm((f) => ({ ...f, titleEn: e.target.value }))} />
             </div>
             <div className="admin-field">
-              <label>開催場所(日本語)</label>
-              <input value={form.placeJa} onChange={(e) => setForm((f) => ({ ...f, placeJa: e.target.value }))} />
-            </div>
-            <div className="admin-field">
               <label>Place (English)</label>
               <input value={form.placeEn} onChange={(e) => setForm((f) => ({ ...f, placeEn: e.target.value }))} />
-            </div>
-            <div className="admin-field">
-              <label>開始日</label>
-              <input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} />
-            </div>
-            <div className="admin-field">
-              <label>終了日(日帰りの場合は空欄)</label>
-              <input type="date" value={form.endDate} onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))} />
-            </div>
-            <div className="admin-field">
-              <label>価格(円)</label>
-              <input
-                type="number"
-                value={form.price}
-                onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
-              />
-            </div>
-            <div className="admin-field">
-              <label>定員</label>
-              <input
-                type="number"
-                value={form.capacity}
-                onChange={(e) => setForm((f) => ({ ...f, capacity: Number(e.target.value) }))}
-              />
             </div>
           </div>
 
@@ -645,29 +813,6 @@ export default function EventsAdmin() {
                 onChange={(e) => setForm((f) => ({ ...f, dayContactPhone: e.target.value }))}
                 placeholder="例: 090-1234-5678"
               />
-            </div>
-          </div>
-
-          <div className="admin-form-section-title">プレビュー(トップページでの表示イメージ)</div>
-          <div className="event-card" style={{ maxWidth: 460, marginBottom: 8 }}>
-            <div className="event-card-image" style={{ cursor: 'default' }}>
-              {previewThumbnailUrl ? (
-                <img src={previewThumbnailUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              ) : (
-                <ImagePlaceholder caption={form.placeJa || '開催場所'} />
-              )}
-              <div className="event-card-date-badge">{previewDateLabel}</div>
-            </div>
-            <div className="event-card-body">
-              <div className="event-card-place">{form.placeJa || '開催場所'}</div>
-              <div className="event-card-title">{form.titleJa || 'イベントタイトル'}</div>
-              <div className="event-card-checkin">
-                集合時間 {previewCheckinTime} ({form.shuttle ? `送迎ポイント: ${form.shuttleLocationJa || '(未入力)'}` : '現地'})
-              </div>
-              <div className="event-card-footer">
-                <span className="event-card-price">¥{form.price.toLocaleString('en-US')}/人</span>
-                <span className="event-card-select">残り{form.capacity}名 ▼</span>
-              </div>
             </div>
           </div>
 
