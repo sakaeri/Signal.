@@ -45,4 +45,9 @@ export interface DbApplication {
   emergency_phone: string;
   message: string | null;
   payment_intent_id: string | null;
+  status_venue_info_sent: boolean;
+  status_kit_collected: boolean;
+  status_photos_developed: boolean;
+  status_letter_mailed: boolean;
+  admin_notes: string | null;
 }

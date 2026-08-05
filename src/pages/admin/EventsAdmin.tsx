@@ -11,10 +11,22 @@ import {
   duplicateEventImages,
   type EventInput,
 } from '../../lib/eventsAdmin';
-import { fetchApplications } from '../../lib/applicationsAdmin';
+import {
+  fetchApplications,
+  setApplicationStatus,
+  setApplicationNotes,
+  type ApplicationStatusField,
+} from '../../lib/applicationsAdmin';
 import { publicUrlFor } from '../../lib/storage';
 import { formatDateLabel, formatCheckinTime } from '../../lib/formatDate';
 import './Admin.css';
+
+const STATUS_FIELDS: { field: ApplicationStatusField; label: string }[] = [
+  { field: 'status_venue_info_sent', label: '案内メール' },
+  { field: 'status_kit_collected', label: 'キット回収' },
+  { field: 'status_photos_developed', label: '写真現像' },
+  { field: 'status_letter_mailed', label: '手紙郵送' },
+];
 
 function applicationsToCsv(rows: DbApplication[]): string {
   const headers = [
@@ -27,12 +39,26 @@ function applicationsToCsv(rows: DbApplication[]): string {
     'emergency_relation',
     'emergency_phone',
     'message',
+    ...STATUS_FIELDS.map((s) => s.label),
+    'admin_notes',
   ];
   const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
   const lines = [headers.join(',')];
   for (const r of rows) {
     lines.push(
-      [r.created_at, r.name, r.email, r.country, r.phone, r.emergency_name, r.emergency_relation, r.emergency_phone, r.message ?? '']
+      [
+        r.created_at,
+        r.name,
+        r.email,
+        r.country,
+        r.phone,
+        r.emergency_name,
+        r.emergency_relation,
+        r.emergency_phone,
+        r.message ?? '',
+        ...STATUS_FIELDS.map((s) => (r[s.field] ? '済' : '未')),
+        r.admin_notes ?? '',
+      ]
         .map((v) => escape(String(v)))
         .join(','),
     );
@@ -214,6 +240,28 @@ export default function EventsAdmin() {
     }
   }
 
+  async function handleToggleStatus(app: DbApplication, field: ApplicationStatusField) {
+    const next = !app[field];
+    setApplications((prev) => prev.map((a) => (a.id === app.id ? { ...a, [field]: next } : a)));
+    try {
+      await setApplicationStatus(app.id, field, next);
+    } catch (e) {
+      setApplications((prev) => prev.map((a) => (a.id === app.id ? { ...a, [field]: !next } : a)));
+      alert(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function handleNotesBlur(app: DbApplication, notes: string) {
+    if (notes === (app.admin_notes ?? '')) return;
+    setApplications((prev) => prev.map((a) => (a.id === app.id ? { ...a, admin_notes: notes || null } : a)));
+    try {
+      await setApplicationNotes(app.id, notes);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+      await reload();
+    }
+  }
+
   const editingEvent = editingId ? events.find((e) => e.id === editingId) ?? null : null;
   const editingImages = editingId ? images.filter((i) => i.event_id === editingId) : [];
   const editingThumbnail = editingImages.find((i) => i.role === 'thumbnail');
@@ -296,6 +344,10 @@ export default function EventsAdmin() {
                       <th>電話番号</th>
                       <th>緊急連絡先</th>
                       <th>ご要望</th>
+                      {STATUS_FIELDS.map((s) => (
+                        <th key={s.field}>{s.label}</th>
+                      ))}
+                      <th>対応メモ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -310,6 +362,24 @@ export default function EventsAdmin() {
                           {a.emergency_name}({a.emergency_relation}) / {a.emergency_phone}
                         </td>
                         <td>{a.message || '—'}</td>
+                        {STATUS_FIELDS.map((s) => (
+                          <td key={s.field} style={{ textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={a[s.field]}
+                              onChange={() => handleToggleStatus(a, s.field)}
+                            />
+                          </td>
+                        ))}
+                        <td>
+                          <input
+                            type="text"
+                            defaultValue={a.admin_notes ?? ''}
+                            placeholder="メモ"
+                            style={{ width: 140, border: 'none', borderBottom: '1px solid rgba(42,42,36,0.3)', background: 'none', fontSize: 13 }}
+                            onBlur={(e) => handleNotesBlur(a, e.target.value)}
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
