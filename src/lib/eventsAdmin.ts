@@ -14,6 +14,8 @@ export interface EventInput {
   meetingPointEn: string;
   belongingsJa: string;
   belongingsEn: string;
+  mapUrl: string;
+  dayContactPhone: string;
   checkinTimeStart: string;
   checkinTimeEnd: string;
   titleJa: string;
@@ -38,6 +40,8 @@ function toRow(input: EventInput) {
     meeting_point_en: input.meetingPointEn || null,
     belongings_ja: input.belongingsJa || null,
     belongings_en: input.belongingsEn || null,
+    map_url: input.mapUrl || null,
+    day_contact_phone: input.dayContactPhone || null,
     checkin_time_start: input.checkinTimeStart,
     checkin_time_end: input.checkinTimeEnd || null,
     title_ja: input.titleJa,

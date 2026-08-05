@@ -89,6 +89,8 @@ const EMPTY_FORM: EventInput = {
   meetingPointEn: '',
   belongingsJa: '',
   belongingsEn: '',
+  mapUrl: '',
+  dayContactPhone: '',
   checkinTimeStart: '',
   checkinTimeEnd: '',
   titleJa: '',
@@ -115,6 +117,8 @@ function dbEventToForm(ev: DbEvent): EventInput {
     meetingPointEn: ev.meeting_point_en ?? '',
     belongingsJa: ev.belongings_ja ?? '',
     belongingsEn: ev.belongings_en ?? '',
+    mapUrl: ev.map_url ?? '',
+    dayContactPhone: ev.day_contact_phone ?? '',
     checkinTimeStart: ev.checkin_time_start.slice(0, 5),
     checkinTimeEnd: ev.checkin_time_end ? ev.checkin_time_end.slice(0, 5) : '',
     titleJa: ev.title_ja,
@@ -618,9 +622,25 @@ export default function EventsAdmin() {
                 placeholder="e.g. Comfortable clothes, a towel, water"
               />
             </div>
+            <div className="admin-field">
+              <label>Googleマップのリンク</label>
+              <input
+                value={form.mapUrl}
+                onChange={(e) => setForm((f) => ({ ...f, mapUrl: e.target.value }))}
+                placeholder="https://maps.app.goo.gl/..."
+              />
+            </div>
+            <div className="admin-field">
+              <label>当日の緊急連絡先(電話番号)</label>
+              <input
+                value={form.dayContactPhone}
+                onChange={(e) => setForm((f) => ({ ...f, dayContactPhone: e.target.value }))}
+                placeholder="例: 090-1234-5678"
+              />
+            </div>
           </div>
           <p className="admin-muted" style={{ marginTop: 8 }}>
-            お迎え場所・集合場所の詳細・持ち物は公開ページには表示されません(社内・案内メール用の控えです)。
+            お迎え場所・集合場所の詳細・持ち物・地図リンク・緊急連絡先は公開ページには表示されません(社内・案内メール用の控えです)。
           </p>
 
           {formError && (

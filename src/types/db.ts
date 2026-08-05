@@ -13,6 +13,8 @@ export interface DbEvent {
   meeting_point_en: string | null;
   belongings_ja: string | null;
   belongings_en: string | null;
+  map_url: string | null;
+  day_contact_phone: string | null;
   checkin_time_start: string;
   checkin_time_end: string | null;
   title_ja: string;
