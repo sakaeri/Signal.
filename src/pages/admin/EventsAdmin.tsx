@@ -344,14 +344,14 @@ export default function EventsAdmin() {
                       <th>電話番号</th>
                       <th>緊急連絡先</th>
                       <th>ご要望</th>
-                      {STATUS_FIELDS.map((s) => (
-                        <th key={s.field}>{s.label}</th>
-                      ))}
+                      <th>対応状況</th>
                       <th>対応メモ</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {applicants.map((a) => (
+                    {applicants.map((a) => {
+                      const next = STATUS_FIELDS.find((s) => !a[s.field]);
+                      return (
                       <tr key={a.id}>
                         <td>{new Date(a.created_at).toLocaleString('ja-JP')}</td>
                         <td>{a.name}</td>
@@ -362,15 +362,46 @@ export default function EventsAdmin() {
                           {a.emergency_name}({a.emergency_relation}) / {a.emergency_phone}
                         </td>
                         <td>{a.message || '—'}</td>
-                        {STATUS_FIELDS.map((s) => (
-                          <td key={s.field} style={{ textAlign: 'center' }}>
-                            <input
-                              type="checkbox"
-                              checked={a[s.field]}
-                              onChange={() => handleToggleStatus(a, s.field)}
-                            />
-                          </td>
-                        ))}
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                            {STATUS_FIELDS.filter((s) => a[s.field]).map((s) => (
+                              <button
+                                key={s.field}
+                                type="button"
+                                title="取り消す"
+                                onClick={() => {
+                                  if (confirm(`「${s.label}」を未対応に戻しますか?`)) handleToggleStatus(a, s.field);
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  fontSize: 12,
+                                  color: 'var(--color-ink-mute)',
+                                  cursor: 'pointer',
+                                  textDecoration: 'line-through',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                ✓ {s.label}
+                              </button>
+                            ))}
+                            {next ? (
+                              <button
+                                type="button"
+                                className="admin-button admin-button-secondary"
+                                style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                                onClick={() => {
+                                  if (confirm(`${a.name}様の「${next.label}」を完了にしますか?`)) handleToggleStatus(a, next.field);
+                                }}
+                              >
+                                → {next.label}
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: 12, fontWeight: 600 }}>対応完了</span>
+                            )}
+                          </div>
+                        </td>
                         <td>
                           <input
                             type="text"
@@ -381,7 +412,8 @@ export default function EventsAdmin() {
                           />
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
