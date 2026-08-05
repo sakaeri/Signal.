@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { DbEvent, DbEventImage } from '../../types/db';
+import type { DbEvent, DbEventImage, DbApplication } from '../../types/db';
 import {
   fetchAdminEvents,
   createEvent,
@@ -11,9 +11,44 @@ import {
   duplicateEventImages,
   type EventInput,
 } from '../../lib/eventsAdmin';
+import { fetchApplications } from '../../lib/applicationsAdmin';
 import { publicUrlFor } from '../../lib/storage';
 import { formatDateLabel, formatCheckinTime } from '../../lib/formatDate';
 import './Admin.css';
+
+function applicationsToCsv(rows: DbApplication[]): string {
+  const headers = [
+    'created_at',
+    'name',
+    'email',
+    'country',
+    'phone',
+    'emergency_name',
+    'emergency_relation',
+    'emergency_phone',
+    'message',
+  ];
+  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const lines = [headers.join(',')];
+  for (const r of rows) {
+    lines.push(
+      [r.created_at, r.name, r.email, r.country, r.phone, r.emergency_name, r.emergency_relation, r.emergency_phone, r.message ?? '']
+        .map((v) => escape(String(v)))
+        .join(','),
+    );
+  }
+  return lines.join('\n');
+}
+
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const EMPTY_FORM: EventInput = {
   startDate: '',
@@ -54,13 +89,10 @@ function dbEventToForm(ev: DbEvent): EventInput {
   };
 }
 
-interface EventsAdminProps {
-  onViewApplications: (eventId: string) => void;
-}
-
-export default function EventsAdmin({ onViewApplications }: EventsAdminProps) {
+export default function EventsAdmin() {
   const [events, setEvents] = useState<DbEvent[]>([]);
   const [images, setImages] = useState<DbEventImage[]>([]);
+  const [applications, setApplications] = useState<DbApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,14 +102,16 @@ export default function EventsAdmin({ onViewApplications }: EventsAdminProps) {
   const [form, setForm] = useState<EventInput>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
 
   async function reload() {
     setLoading(true);
     setError(null);
     try {
-      const { events, images } = await fetchAdminEvents();
+      const [{ events, images }, applications] = await Promise.all([fetchAdminEvents(), fetchApplications()]);
       setEvents(events);
       setImages(images);
+      setApplications(applications);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -191,37 +225,99 @@ export default function EventsAdmin({ onViewApplications }: EventsAdminProps) {
     .slice()
     .reverse();
 
+  const priceById = new Map(events.map((ev) => [ev.id, ev.price]));
+  const totalRevenue = applications.reduce((sum, a) => sum + (priceById.get(a.event_id) ?? 0), 0);
+
   function renderEventRow(ev: DbEvent) {
     const thumb = images.find((i) => i.event_id === ev.id && i.role === 'thumbnail');
-    const applicantCount = ev.capacity - ev.remaining;
+    const applicants = applications.filter((a) => a.event_id === ev.id);
+    const isExpanded = expandedEventId === ev.id;
     return (
-      <div className="admin-event-row" key={ev.id}>
-        <div className="admin-event-thumb">{thumb ? <img src={publicUrlFor(thumb.storage_path)} alt="" /> : '画像なし'}</div>
-        <div className="admin-event-info">
-          <div className="admin-event-title">{ev.title_ja}</div>
-          <div className="admin-event-meta">
-            {ev.place_ja} ・ {formatDateLabel(ev.start_date, ev.end_date, 'ja')} ・{' '}
-            {formatCheckinTime(ev.checkin_time_start, ev.checkin_time_end, 'ja')}集合
-            {ev.shuttle && ev.shuttle_location_ja ? `(送迎: ${ev.shuttle_location_ja})` : ''} ・ ¥
-            {ev.price.toLocaleString()} ・ 残り{ev.remaining}/{ev.capacity}名
+      <div key={ev.id}>
+        <div className="admin-event-row">
+          <div className="admin-event-thumb">{thumb ? <img src={publicUrlFor(thumb.storage_path)} alt="" /> : '画像なし'}</div>
+          <div className="admin-event-info">
+            <div className="admin-event-title">{ev.title_ja}</div>
+            <div className="admin-event-meta">
+              {ev.place_ja} ・ {formatDateLabel(ev.start_date, ev.end_date, 'ja')} ・{' '}
+              {formatCheckinTime(ev.checkin_time_start, ev.checkin_time_end, 'ja')}集合
+              {ev.shuttle && ev.shuttle_location_ja ? `(送迎: ${ev.shuttle_location_ja})` : ''} ・ ¥
+              {ev.price.toLocaleString()} ・ 残り{ev.remaining}/{ev.capacity}名
+            </div>
+          </div>
+          <div className="admin-event-actions">
+            <button
+              type="button"
+              className={`admin-button admin-button-secondary${isExpanded ? ' is-selected' : ''}`}
+              onClick={() => setExpandedEventId(isExpanded ? null : ev.id)}
+            >
+              申し込み {applicants.length}件 {isExpanded ? '▲' : '▼'}
+            </button>
+            {!isPastEvent(ev) && (
+              <button type="button" className="admin-button admin-button-secondary" onClick={() => startEdit(ev)}>
+                編集
+              </button>
+            )}
+            <button type="button" className="admin-button admin-button-secondary" onClick={() => startDuplicate(ev)}>
+              複製
+            </button>
+            <button type="button" className="admin-button admin-button-danger" onClick={() => handleDelete(ev)}>
+              削除
+            </button>
           </div>
         </div>
-        <div className="admin-event-actions">
-          <button type="button" className="admin-button admin-button-secondary" onClick={() => onViewApplications(ev.id)}>
-            申し込み {applicantCount}件
-          </button>
-          {!isPastEvent(ev) && (
-            <button type="button" className="admin-button admin-button-secondary" onClick={() => startEdit(ev)}>
-              編集
-            </button>
-          )}
-          <button type="button" className="admin-button admin-button-secondary" onClick={() => startDuplicate(ev)}>
-            複製
-          </button>
-          <button type="button" className="admin-button admin-button-danger" onClick={() => handleDelete(ev)}>
-            削除
-          </button>
-        </div>
+
+        {isExpanded && (
+          <div className="admin-card" style={{ marginTop: -8, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div className="admin-section-title" style={{ marginBottom: 0, fontSize: 14 }}>
+                申し込み者一覧
+              </div>
+              <button
+                type="button"
+                className="admin-button admin-button-secondary"
+                disabled={applicants.length === 0}
+                onClick={() => downloadCsv(`applications-${ev.id}.csv`, applicationsToCsv(applicants))}
+              >
+                CSVダウンロード
+              </button>
+            </div>
+            {applicants.length === 0 ? (
+              <div className="admin-empty">申し込みはまだありません。</div>
+            ) : (
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>申込日時</th>
+                      <th>お名前</th>
+                      <th>メール</th>
+                      <th>国</th>
+                      <th>電話番号</th>
+                      <th>緊急連絡先</th>
+                      <th>ご要望</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {applicants.map((a) => (
+                      <tr key={a.id}>
+                        <td>{new Date(a.created_at).toLocaleString('ja-JP')}</td>
+                        <td>{a.name}</td>
+                        <td>{a.email}</td>
+                        <td>{a.country}</td>
+                        <td>{a.phone}</td>
+                        <td>
+                          {a.emergency_name}({a.emergency_relation}) / {a.emergency_phone}
+                        </td>
+                        <td>{a.message || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -239,6 +335,23 @@ export default function EventsAdmin({ onViewApplications }: EventsAdminProps) {
 
       {loading && <div className="admin-empty">読み込み中…</div>}
       {error && <div className="admin-error">{error}</div>}
+
+      {!loading && !error && (
+        <div className="admin-stats">
+          <div className="admin-stat">
+            <div className="admin-stat-value">{upcomingEvents.length}</div>
+            <div className="admin-stat-label">開催予定</div>
+          </div>
+          <div className="admin-stat">
+            <div className="admin-stat-value">{applications.length}</div>
+            <div className="admin-stat-label">総申込者数</div>
+          </div>
+          <div className="admin-stat">
+            <div className="admin-stat-value">¥{totalRevenue.toLocaleString()}</div>
+            <div className="admin-stat-label">総売上</div>
+          </div>
+        </div>
+      )}
 
       {(isCreating || editingEvent) && (
         <div className="admin-card">

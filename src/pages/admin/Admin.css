@@ -93,6 +93,12 @@
   background: #b3452f;
 }
 
+.admin-button-secondary.is-selected {
+  background: #2e3a2a;
+  border-color: #2e3a2a;
+  color: #f6f2ea;
+}
+
 .admin-error {
   font-size: 13px;
   color: #b3452f;
@@ -157,6 +163,33 @@
   box-shadow: 0 2px 12px rgba(20, 20, 16, 0.06);
   padding: 24px;
   margin-bottom: 20px;
+}
+
+.admin-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-stat {
+  flex: 1;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(20, 20, 16, 0.06);
+  padding: 18px 24px;
+}
+
+.admin-stat-value {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.admin-stat-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: #6a665c;
+  margin-top: 4px;
 }
 
 .admin-table {
