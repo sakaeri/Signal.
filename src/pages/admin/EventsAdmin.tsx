@@ -20,6 +20,8 @@ import {
 import { sendVenueInfoEmail } from '../../lib/api';
 import { publicUrlFor } from '../../lib/storage';
 import { formatDateLabel, formatCheckinTime } from '../../lib/formatDate';
+import ImagePlaceholder from '../../components/ImagePlaceholder';
+import '../../components/Events.css';
 import './Admin.css';
 
 const STATUS_FIELDS: { field: ApplicationStatusField; label: string }[] = [
@@ -301,6 +303,12 @@ export default function EventsAdmin() {
   const editingThumbnail = editingImages.find((i) => i.role === 'thumbnail');
   const editingGallery = editingImages.filter((i) => i.role === 'gallery').sort((a, b) => a.position - b.position);
 
+  const previewDateLabel = form.startDate ? formatDateLabel(form.startDate, form.endDate || null, 'ja') : '(開始日を入力してください)';
+  const previewCheckinTime = form.checkinTimeStart
+    ? formatCheckinTime(form.checkinTimeStart, form.checkinTimeEnd || null, 'ja')
+    : '(集合時間を入力してください)';
+  const previewThumbnailUrl = editingThumbnail ? publicUrlFor(editingThumbnail.storage_path) : null;
+
   const upcomingEvents = events.filter((ev) => !isPastEvent(ev));
   const pastEvents = events
     .filter(isPastEvent)
@@ -547,6 +555,29 @@ export default function EventsAdmin() {
                 value={form.capacity}
                 onChange={(e) => setForm((f) => ({ ...f, capacity: Number(e.target.value) }))}
               />
+            </div>
+          </div>
+
+          <div className="admin-form-section-title">プレビュー(トップページでの表示イメージ)</div>
+          <div className="event-card" style={{ maxWidth: 460, marginBottom: 8 }}>
+            <div className="event-card-image" style={{ cursor: 'default' }}>
+              {previewThumbnailUrl ? (
+                <img src={previewThumbnailUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              ) : (
+                <ImagePlaceholder caption={form.placeJa || '開催場所'} />
+              )}
+              <div className="event-card-date-badge">{previewDateLabel}</div>
+            </div>
+            <div className="event-card-body">
+              <div className="event-card-place">{form.placeJa || '開催場所'}</div>
+              <div className="event-card-title">{form.titleJa || 'イベントタイトル'}</div>
+              <div className="event-card-checkin">
+                集合時間 {previewCheckinTime} ({form.shuttle ? '送迎ポイント' : '現地'})
+              </div>
+              <div className="event-card-footer">
+                <span className="event-card-price">¥{form.price.toLocaleString('en-US')}/人</span>
+                <span className="event-card-select">残り{form.capacity}名 ▼</span>
+              </div>
             </div>
           </div>
 
