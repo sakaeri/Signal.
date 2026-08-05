@@ -56,11 +56,28 @@ export async function fetchAdminEvents(): Promise<{ events: DbEvent[]; images: D
   return { events: (eventsRes.data ?? []) as DbEvent[], images: (imagesRes.data ?? []) as DbEventImage[] };
 }
 
-export async function createEvent(input: EventInput): Promise<void> {
+/** Returns the new event's id, so callers (e.g. duplication) can attach images to it. */
+export async function createEvent(input: EventInput): Promise<string> {
   const db = requireSupabase();
   const { data, error } = await db.from('events').insert(toRow(input)).select('id');
   if (error) throw error;
   if (!data || data.length === 0) throw new Error(RLS_DENIED_MESSAGE);
+  return data[0].id as string;
+}
+
+/** Points the new event at the same underlying image files as the source event (no file copy needed). */
+export async function duplicateEventImages(sourceEventId: string, newEventId: string): Promise<void> {
+  const db = requireSupabase();
+  const { data: images, error: fetchError } = await db
+    .from('event_images')
+    .select('role, storage_path, position')
+    .eq('event_id', sourceEventId);
+  if (fetchError) throw fetchError;
+  if (!images || images.length === 0) return;
+
+  const rows = images.map((img) => ({ event_id: newEventId, ...img }));
+  const { error: insertError } = await db.from('event_images').insert(rows);
+  if (insertError) throw insertError;
 }
 
 export async function updateEvent(id: string, input: EventInput): Promise<void> {

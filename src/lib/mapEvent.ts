@@ -3,7 +3,11 @@ import type { EventRecord } from '../types/event';
 import { publicUrlFor } from './storage';
 import { formatDateLabel, formatCheckinTime } from './formatDate';
 
+/** Public-facing mapping: past events are excluded so the site never lists a retreat that's already over. */
 export function mapEvents(events: DbEvent[], images: DbEventImage[]): EventRecord[] {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const upcoming = events.filter((ev) => (ev.end_date ?? ev.start_date) >= todayIso);
+
   const imagesByEvent = new Map<string, DbEventImage[]>();
   for (const img of images) {
     const list = imagesByEvent.get(img.event_id) ?? [];
@@ -11,7 +15,7 @@ export function mapEvents(events: DbEvent[], images: DbEventImage[]): EventRecor
     imagesByEvent.set(img.event_id, list);
   }
 
-  return events.map((ev) => {
+  return upcoming.map((ev) => {
     const imgs = (imagesByEvent.get(ev.id) ?? []).slice().sort((a, b) => a.position - b.position);
     const thumbnail = imgs.find((i) => i.role === 'thumbnail');
     const gallery = imgs.filter((i) => i.role === 'gallery');

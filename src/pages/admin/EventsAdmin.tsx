@@ -8,6 +8,7 @@ import {
   setEventThumbnail,
   addGalleryImage,
   removeEventImage,
+  duplicateEventImages,
   type EventInput,
 } from '../../lib/eventsAdmin';
 import { publicUrlFor } from '../../lib/storage';
@@ -29,6 +30,11 @@ const EMPTY_FORM: EventInput = {
   placeJa: '',
   placeEn: '',
 };
+
+function isPastEvent(ev: DbEvent): boolean {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  return (ev.end_date ?? ev.start_date) < todayIso;
+}
 
 function dbEventToForm(ev: DbEvent): EventInput {
   return {
@@ -56,6 +62,7 @@ export default function EventsAdmin() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [duplicateSourceId, setDuplicateSourceId] = useState<string | null>(null);
   const [form, setForm] = useState<EventInput>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -82,6 +89,7 @@ export default function EventsAdmin() {
     setForm(EMPTY_FORM);
     setIsCreating(true);
     setEditingId(null);
+    setDuplicateSourceId(null);
     setFormError(null);
   }
 
@@ -89,12 +97,22 @@ export default function EventsAdmin() {
     setForm(dbEventToForm(ev));
     setEditingId(ev.id);
     setIsCreating(false);
+    setDuplicateSourceId(null);
+    setFormError(null);
+  }
+
+  function startDuplicate(ev: DbEvent) {
+    setForm({ ...dbEventToForm(ev), startDate: '', endDate: '' });
+    setIsCreating(true);
+    setEditingId(null);
+    setDuplicateSourceId(ev.id);
     setFormError(null);
   }
 
   function cancelEdit() {
     setEditingId(null);
     setIsCreating(false);
+    setDuplicateSourceId(null);
     setFormError(null);
   }
 
@@ -105,7 +123,8 @@ export default function EventsAdmin() {
       if (!form.startDate) throw new Error('開始日を選択してください。');
       if (!form.checkinTimeStart) throw new Error('集合時間を選択してください。');
       if (isCreating) {
-        await createEvent(form);
+        const newId = await createEvent(form);
+        if (duplicateSourceId) await duplicateEventImages(duplicateSourceId, newId);
       } else if (editingId) {
         await updateEvent(editingId, form);
       }
@@ -162,6 +181,41 @@ export default function EventsAdmin() {
   const editingThumbnail = editingImages.find((i) => i.role === 'thumbnail');
   const editingGallery = editingImages.filter((i) => i.role === 'gallery').sort((a, b) => a.position - b.position);
 
+  const upcomingEvents = events.filter((ev) => !isPastEvent(ev));
+  const pastEvents = events
+    .filter(isPastEvent)
+    .slice()
+    .reverse();
+
+  function renderEventRow(ev: DbEvent) {
+    const thumb = images.find((i) => i.event_id === ev.id && i.role === 'thumbnail');
+    return (
+      <div className="admin-event-row" key={ev.id}>
+        <div className="admin-event-thumb">{thumb ? <img src={publicUrlFor(thumb.storage_path)} alt="" /> : '画像なし'}</div>
+        <div className="admin-event-info">
+          <div className="admin-event-title">{ev.title_ja}</div>
+          <div className="admin-event-meta">
+            {ev.place_ja} ・ {formatDateLabel(ev.start_date, ev.end_date, 'ja')} ・{' '}
+            {formatCheckinTime(ev.checkin_time_start, ev.checkin_time_end, 'ja')}集合
+            {ev.shuttle && ev.shuttle_location_ja ? `(送迎: ${ev.shuttle_location_ja})` : ''} ・ ¥
+            {ev.price.toLocaleString()} ・ 残り{ev.remaining}/{ev.capacity}名
+          </div>
+        </div>
+        <div className="admin-event-actions">
+          <button type="button" className="admin-button admin-button-secondary" onClick={() => startEdit(ev)}>
+            編集
+          </button>
+          <button type="button" className="admin-button admin-button-secondary" onClick={() => startDuplicate(ev)}>
+            複製
+          </button>
+          <button type="button" className="admin-button admin-button-danger" onClick={() => handleDelete(ev)}>
+            削除
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -179,7 +233,7 @@ export default function EventsAdmin() {
       {(isCreating || editingEvent) && (
         <div className="admin-card">
           <div className="admin-section-title" style={{ fontSize: 17 }}>
-            {isCreating ? '新規イベント' : `編集: ${editingEvent?.title_ja}`}
+            {isCreating ? (duplicateSourceId ? '複製して新規作成' : '新規イベント') : `編集: ${editingEvent?.title_ja}`}
           </div>
           <div className="admin-form-grid">
             <div className="admin-field">
@@ -345,33 +399,23 @@ export default function EventsAdmin() {
 
       {!loading && events.length === 0 && !isCreating && <div className="admin-empty">イベントがまだありません。</div>}
 
-      {events.map((ev) => {
-        const thumb = images.find((i) => i.event_id === ev.id && i.role === 'thumbnail');
-        return (
-          <div className="admin-event-row" key={ev.id}>
-            <div className="admin-event-thumb">
-              {thumb ? <img src={publicUrlFor(thumb.storage_path)} alt="" /> : '画像なし'}
-            </div>
-            <div className="admin-event-info">
-              <div className="admin-event-title">{ev.title_ja}</div>
-              <div className="admin-event-meta">
-                {ev.place_ja} ・ {formatDateLabel(ev.start_date, ev.end_date, 'ja')} ・{' '}
-                {formatCheckinTime(ev.checkin_time_start, ev.checkin_time_end, 'ja')}集合
-                {ev.shuttle && ev.shuttle_location_ja ? `(送迎: ${ev.shuttle_location_ja})` : ''} ・ ¥
-                {ev.price.toLocaleString()} ・ 残り{ev.remaining}/{ev.capacity}名
-              </div>
-            </div>
-            <div className="admin-event-actions">
-              <button type="button" className="admin-button admin-button-secondary" onClick={() => startEdit(ev)}>
-                編集
-              </button>
-              <button type="button" className="admin-button admin-button-danger" onClick={() => handleDelete(ev)}>
-                削除
-              </button>
-            </div>
+      {upcomingEvents.length > 0 && (
+        <>
+          <div className="admin-section-title" style={{ fontSize: 15, marginTop: 8 }}>
+            開催予定
           </div>
-        );
-      })}
+          {upcomingEvents.map(renderEventRow)}
+        </>
+      )}
+
+      {pastEvents.length > 0 && (
+        <>
+          <div className="admin-section-title" style={{ fontSize: 15, marginTop: 32 }}>
+            過去のイベント
+          </div>
+          <div style={{ opacity: 0.7 }}>{pastEvents.map(renderEventRow)}</div>
+        </>
+      )}
     </div>
   );
 }
