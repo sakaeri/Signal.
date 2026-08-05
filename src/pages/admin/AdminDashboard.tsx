@@ -11,6 +11,12 @@ type Tab = 'events' | 'applications' | 'images';
 export default function AdminDashboard() {
   const { session, loading, signOut } = useAuth();
   const [tab, setTab] = useState<Tab>('events');
+  const [applicationsEventFilter, setApplicationsEventFilter] = useState('');
+
+  function viewApplicationsFor(eventId: string) {
+    setApplicationsEventFilter(eventId);
+    setTab('applications');
+  }
 
   return (
     <div className="admin">
@@ -52,8 +58,10 @@ export default function AdminDashboard() {
         )}
       </div>
       <div className="admin-body">
-        {tab === 'events' && <EventsAdmin />}
-        {tab === 'applications' && <ApplicationsAdmin />}
+        {tab === 'events' && <EventsAdmin onViewApplications={viewApplicationsFor} />}
+        {tab === 'applications' && (
+          <ApplicationsAdmin eventFilter={applicationsEventFilter} onEventFilterChange={setApplicationsEventFilter} />
+        )}
         {tab === 'images' && <SiteImagesAdmin />}
       </div>
     </div>

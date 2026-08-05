@@ -54,7 +54,11 @@ function dbEventToForm(ev: DbEvent): EventInput {
   };
 }
 
-export default function EventsAdmin() {
+interface EventsAdminProps {
+  onViewApplications: (eventId: string) => void;
+}
+
+export default function EventsAdmin({ onViewApplications }: EventsAdminProps) {
   const [events, setEvents] = useState<DbEvent[]>([]);
   const [images, setImages] = useState<DbEventImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,6 +193,7 @@ export default function EventsAdmin() {
 
   function renderEventRow(ev: DbEvent) {
     const thumb = images.find((i) => i.event_id === ev.id && i.role === 'thumbnail');
+    const applicantCount = ev.capacity - ev.remaining;
     return (
       <div className="admin-event-row" key={ev.id}>
         <div className="admin-event-thumb">{thumb ? <img src={publicUrlFor(thumb.storage_path)} alt="" /> : '画像なし'}</div>
@@ -202,9 +207,14 @@ export default function EventsAdmin() {
           </div>
         </div>
         <div className="admin-event-actions">
-          <button type="button" className="admin-button admin-button-secondary" onClick={() => startEdit(ev)}>
-            編集
+          <button type="button" className="admin-button admin-button-secondary" onClick={() => onViewApplications(ev.id)}>
+            申し込み {applicantCount}件
           </button>
+          {!isPastEvent(ev) && (
+            <button type="button" className="admin-button admin-button-secondary" onClick={() => startEdit(ev)}>
+              編集
+            </button>
+          )}
           <button type="button" className="admin-button admin-button-secondary" onClick={() => startDuplicate(ev)}>
             複製
           </button>

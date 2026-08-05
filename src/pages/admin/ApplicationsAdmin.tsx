@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { DbApplication } from '../../types/db';
+import type { DbApplication, DbEvent } from '../../types/db';
 import { fetchApplications } from '../../lib/applicationsAdmin';
+import { fetchAdminEvents } from '../../lib/eventsAdmin';
 import './Admin.css';
 
-function toCsv(rows: DbApplication[]): string {
+function toCsv(rows: DbApplication[], titleFor: (eventId: string) => string): string {
   const headers = [
     'created_at',
-    'event_id',
+    'event',
     'name',
     'email',
     'country',
@@ -20,7 +21,18 @@ function toCsv(rows: DbApplication[]): string {
   const lines = [headers.join(',')];
   for (const r of rows) {
     lines.push(
-      [r.created_at, r.event_id, r.name, r.email, r.country, r.phone, r.emergency_name, r.emergency_relation, r.emergency_phone, r.message ?? '']
+      [
+        r.created_at,
+        titleFor(r.event_id),
+        r.name,
+        r.email,
+        r.country,
+        r.phone,
+        r.emergency_name,
+        r.emergency_relation,
+        r.emergency_phone,
+        r.message ?? '',
+      ]
         .map((v) => escape(String(v)))
         .join(','),
     );
@@ -28,24 +40,39 @@ function toCsv(rows: DbApplication[]): string {
   return lines.join('\n');
 }
 
-export default function ApplicationsAdmin() {
+interface ApplicationsAdminProps {
+  eventFilter: string;
+  onEventFilterChange: (eventId: string) => void;
+}
+
+export default function ApplicationsAdmin({ eventFilter, onEventFilterChange }: ApplicationsAdminProps) {
   const [applications, setApplications] = useState<DbApplication[]>([]);
+  const [events, setEvents] = useState<DbEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [eventFilter, setEventFilter] = useState('');
 
   useEffect(() => {
-    fetchApplications()
-      .then(setApplications)
+    Promise.all([fetchApplications(), fetchAdminEvents()])
+      .then(([apps, { events }]) => {
+        setApplications(apps);
+        setEvents(events);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
   }, []);
+
+  const titleById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const ev of events) map.set(ev.id, `${ev.title_ja}(${ev.start_date})`);
+    return map;
+  }, [events]);
+  const titleFor = (eventId: string) => titleById.get(eventId) ?? eventId;
 
   const eventIds = useMemo(() => Array.from(new Set(applications.map((a) => a.event_id))).sort(), [applications]);
   const filtered = eventFilter ? applications.filter((a) => a.event_id === eventFilter) : applications;
 
   function handleExport() {
-    const csv = toCsv(filtered);
+    const csv = toCsv(filtered, titleFor);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -62,11 +89,11 @@ export default function ApplicationsAdmin() {
           申し込み一覧 ({filtered.length}件)
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}>
+          <select value={eventFilter} onChange={(e) => onEventFilterChange(e.target.value)}>
             <option value="">すべての回</option>
             {eventIds.map((id) => (
               <option key={id} value={id}>
-                {id}
+                {titleFor(id)}
               </option>
             ))}
           </select>
@@ -99,7 +126,7 @@ export default function ApplicationsAdmin() {
               {filtered.map((a) => (
                 <tr key={a.id}>
                   <td>{new Date(a.created_at).toLocaleString('ja-JP')}</td>
-                  <td>{a.event_id}</td>
+                  <td>{titleFor(a.event_id)}</td>
                   <td>{a.name}</td>
                   <td>{a.email}</td>
                   <td>{a.country}</td>
