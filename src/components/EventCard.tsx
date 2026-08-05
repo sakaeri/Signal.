@@ -16,7 +16,12 @@ export default function EventCard({ event, isSelected, onSelect, onOpenGallery }
   const place = event.place[lang];
   const dateLabel = event.dateLabel[lang];
   const checkinTime = event.checkinTime[lang];
-  const checkinPlace = event.shuttle ? t.meetShuttleValue : t.meetOnsiteValue;
+  const shuttleLocation = event.shuttleLocation[lang];
+  const checkinPlace = event.shuttle
+    ? shuttleLocation
+      ? `${t.meetShuttleValue}: ${shuttleLocation}`
+      : t.meetShuttleValue
+    : t.meetOnsiteValue;
   const isSoldOut = event.remaining <= 0;
   const remainingLabel = lang === 'ja' ? `残り${event.remaining}名` : `${event.remaining} left`;
   const buttonLabel = isSoldOut ? t.soldOutLabel : isSelected ? (lang === 'ja' ? '選択中' : 'Selected') : remainingLabel;

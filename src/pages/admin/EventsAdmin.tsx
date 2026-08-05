@@ -212,11 +212,17 @@ export default function EventsAdmin() {
       if (isCreating) {
         const newId = await createEvent(form);
         if (duplicateSourceId) await duplicateEventImages(duplicateSourceId, newId);
+        await reload();
+        // Switch straight into editing the new event so the image upload section
+        // (only shown while editing an existing event) is immediately available.
+        setIsCreating(false);
+        setDuplicateSourceId(null);
+        setEditingId(newId);
       } else if (editingId) {
         await updateEvent(editingId, form);
+        await reload();
+        cancelEdit();
       }
-      await reload();
-      cancelEdit();
     } catch (e) {
       setFormError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -558,30 +564,7 @@ export default function EventsAdmin() {
             </div>
           </div>
 
-          <div className="admin-form-section-title">プレビュー(トップページでの表示イメージ)</div>
-          <div className="event-card" style={{ maxWidth: 460, marginBottom: 8 }}>
-            <div className="event-card-image" style={{ cursor: 'default' }}>
-              {previewThumbnailUrl ? (
-                <img src={previewThumbnailUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              ) : (
-                <ImagePlaceholder caption={form.placeJa || '開催場所'} />
-              )}
-              <div className="event-card-date-badge">{previewDateLabel}</div>
-            </div>
-            <div className="event-card-body">
-              <div className="event-card-place">{form.placeJa || '開催場所'}</div>
-              <div className="event-card-title">{form.titleJa || 'イベントタイトル'}</div>
-              <div className="event-card-checkin">
-                集合時間 {previewCheckinTime} ({form.shuttle ? '送迎ポイント' : '現地'})
-              </div>
-              <div className="event-card-footer">
-                <span className="event-card-price">¥{form.price.toLocaleString('en-US')}/人</span>
-                <span className="event-card-select">残り{form.capacity}名 ▼</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="admin-form-section-title">集合について(公開ページには集合時間のみ表示されます)</div>
+          <div className="admin-form-section-title">集合について(集合時間・送迎は公開ページにも表示されます)</div>
           <div className="admin-form-grid">
             <div className="admin-field">
               <label>集合時間</label>
@@ -665,6 +648,29 @@ export default function EventsAdmin() {
             </div>
           </div>
 
+          <div className="admin-form-section-title">プレビュー(トップページでの表示イメージ)</div>
+          <div className="event-card" style={{ maxWidth: 460, marginBottom: 8 }}>
+            <div className="event-card-image" style={{ cursor: 'default' }}>
+              {previewThumbnailUrl ? (
+                <img src={previewThumbnailUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              ) : (
+                <ImagePlaceholder caption={form.placeJa || '開催場所'} />
+              )}
+              <div className="event-card-date-badge">{previewDateLabel}</div>
+            </div>
+            <div className="event-card-body">
+              <div className="event-card-place">{form.placeJa || '開催場所'}</div>
+              <div className="event-card-title">{form.titleJa || 'イベントタイトル'}</div>
+              <div className="event-card-checkin">
+                集合時間 {previewCheckinTime} ({form.shuttle ? `送迎ポイント: ${form.shuttleLocationJa || '(未入力)'}` : '現地'})
+              </div>
+              <div className="event-card-footer">
+                <span className="event-card-price">¥{form.price.toLocaleString('en-US')}/人</span>
+                <span className="event-card-select">残り{form.capacity}名 ▼</span>
+              </div>
+            </div>
+          </div>
+
           <div className="admin-form-section-title">持ち物(案内メールに使われます)</div>
           <div className="admin-form-grid">
             <div className="admin-field">
@@ -687,7 +693,7 @@ export default function EventsAdmin() {
             </div>
           </div>
           <p className="admin-muted" style={{ marginTop: 8 }}>
-            お迎え場所・集合場所の詳細・持ち物・地図リンク・緊急連絡先は公開ページには表示されません(社内・案内メール用の控えです)。
+            集合場所の詳細・持ち物・地図リンク・緊急連絡先は公開ページには表示されません(社内・案内メール用の控えです)。お迎え場所は公開ページにも表示されます。
           </p>
 
           {formError && (
