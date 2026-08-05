@@ -10,6 +10,10 @@ export interface EventInput {
   shuttle: boolean;
   shuttleLocationJa: string;
   shuttleLocationEn: string;
+  meetingPointJa: string;
+  meetingPointEn: string;
+  belongingsJa: string;
+  belongingsEn: string;
   checkinTimeStart: string;
   checkinTimeEnd: string;
   titleJa: string;
@@ -30,6 +34,10 @@ function toRow(input: EventInput) {
     shuttle: input.shuttle,
     shuttle_location_ja: input.shuttle ? input.shuttleLocationJa || null : null,
     shuttle_location_en: input.shuttle ? input.shuttleLocationEn || null : null,
+    meeting_point_ja: input.meetingPointJa || null,
+    meeting_point_en: input.meetingPointEn || null,
+    belongings_ja: input.belongingsJa || null,
+    belongings_en: input.belongingsEn || null,
     checkin_time_start: input.checkinTimeStart,
     checkin_time_end: input.checkinTimeEnd || null,
     title_ja: input.titleJa,

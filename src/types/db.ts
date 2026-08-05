@@ -9,6 +9,10 @@ export interface DbEvent {
   shuttle: boolean;
   shuttle_location_ja: string | null;
   shuttle_location_en: string | null;
+  meeting_point_ja: string | null;
+  meeting_point_en: string | null;
+  belongings_ja: string | null;
+  belongings_en: string | null;
   checkin_time_start: string;
   checkin_time_end: string | null;
   title_ja: string;

@@ -85,6 +85,10 @@ const EMPTY_FORM: EventInput = {
   shuttle: false,
   shuttleLocationJa: '',
   shuttleLocationEn: '',
+  meetingPointJa: '',
+  meetingPointEn: '',
+  belongingsJa: '',
+  belongingsEn: '',
   checkinTimeStart: '',
   checkinTimeEnd: '',
   titleJa: '',
@@ -107,6 +111,10 @@ function dbEventToForm(ev: DbEvent): EventInput {
     shuttle: ev.shuttle,
     shuttleLocationJa: ev.shuttle_location_ja ?? '',
     shuttleLocationEn: ev.shuttle_location_en ?? '',
+    meetingPointJa: ev.meeting_point_ja ?? '',
+    meetingPointEn: ev.meeting_point_en ?? '',
+    belongingsJa: ev.belongings_ja ?? '',
+    belongingsEn: ev.belongings_en ?? '',
     checkinTimeStart: ev.checkin_time_start.slice(0, 5),
     checkinTimeEnd: ev.checkin_time_end ? ev.checkin_time_end.slice(0, 5) : '',
     titleJa: ev.title_ja,
@@ -574,9 +582,45 @@ export default function EventsAdmin() {
                 </div>
               </>
             )}
+            <div className="admin-field">
+              <label>集合場所の詳細(日本語)</label>
+              <textarea
+                rows={2}
+                value={form.meetingPointJa}
+                onChange={(e) => setForm((f) => ({ ...f, meetingPointJa: e.target.value }))}
+                placeholder="例: 現地駐車場入口の看板前"
+              />
+            </div>
+            <div className="admin-field">
+              <label>Meeting point details (English)</label>
+              <textarea
+                rows={2}
+                value={form.meetingPointEn}
+                onChange={(e) => setForm((f) => ({ ...f, meetingPointEn: e.target.value }))}
+                placeholder="e.g. By the sign at the parking lot entrance"
+              />
+            </div>
+            <div className="admin-field">
+              <label>持ち物(日本語)</label>
+              <textarea
+                rows={2}
+                value={form.belongingsJa}
+                onChange={(e) => setForm((f) => ({ ...f, belongingsJa: e.target.value }))}
+                placeholder="例: 動きやすい服装、タオル、飲み物"
+              />
+            </div>
+            <div className="admin-field">
+              <label>What to bring (English)</label>
+              <textarea
+                rows={2}
+                value={form.belongingsEn}
+                onChange={(e) => setForm((f) => ({ ...f, belongingsEn: e.target.value }))}
+                placeholder="e.g. Comfortable clothes, a towel, water"
+              />
+            </div>
           </div>
           <p className="admin-muted" style={{ marginTop: 8 }}>
-            お迎え場所は公開ページには表示されません(社内・案内メール用の控えです)。
+            お迎え場所・集合場所の詳細・持ち物は公開ページには表示されません(社内・案内メール用の控えです)。
           </p>
 
           {formError && (

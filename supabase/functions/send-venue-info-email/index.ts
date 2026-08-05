@@ -50,10 +50,17 @@ function buildEmailHtml(params: {
   shuttle: boolean;
   shuttleLocationJa: string | null;
   shuttleLocationEn: string | null;
+  meetingPointJa: string | null;
+  meetingPointEn: string | null;
+  belongingsJa: string | null;
+  belongingsEn: string | null;
 }): string {
   const meet = params.shuttle
     ? `送迎あり: ${params.shuttleLocationJa ?? ''} にお集まりください / Shuttle pickup at ${params.shuttleLocationEn ?? ''}`
     : `現地集合・解散です / Meet on-site`;
+
+  const row = (label: string, value: string | null) =>
+    value ? `<tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">${label}</td><td>${value}</td></tr>` : '';
 
   return `
     <div style="font-family: sans-serif; line-height: 1.8; color: #2a2a24;">
@@ -64,6 +71,8 @@ function buildEmailHtml(params: {
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">日程</td><td>${params.dateRange}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">集合時間</td><td>${params.checkinTime}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">集合方法</td><td>${meet}</td></tr>
+        ${row('集合場所の詳細', params.meetingPointJa)}
+        ${row('持ち物', params.belongingsJa)}
       </table>
       <p>当日お会いできるのを楽しみにしております。</p>
       <hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e2d8;" />
@@ -73,6 +82,8 @@ function buildEmailHtml(params: {
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">Location</td><td>${params.placeEn}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">Dates</td><td>${params.dateRange}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">Check-in time</td><td>${params.checkinTime}</td></tr>
+        ${row('Meeting point', params.meetingPointEn)}
+        ${row('What to bring', params.belongingsEn)}
       </table>
       <p>We look forward to seeing you.</p>
       <p style="color: #9a9686; font-size: 12px; margin-top: 32px;">— Signal.</p>
@@ -108,7 +119,9 @@ Deno.serve(async (req) => {
 
     const { data: event, error: eventError } = await supabase
       .from('events')
-      .select('title_ja, title_en, place_ja, place_en, start_date, end_date, checkin_time_start, checkin_time_end, shuttle, shuttle_location_ja, shuttle_location_en')
+      .select(
+        'title_ja, title_en, place_ja, place_en, start_date, end_date, checkin_time_start, checkin_time_end, shuttle, shuttle_location_ja, shuttle_location_en, meeting_point_ja, meeting_point_en, belongings_ja, belongings_en',
+      )
       .eq('id', application.event_id)
       .single();
     if (eventError || !event) return jsonError(404, 'Event not found');
@@ -124,6 +137,10 @@ Deno.serve(async (req) => {
       shuttle: event.shuttle,
       shuttleLocationJa: event.shuttle_location_ja,
       shuttleLocationEn: event.shuttle_location_en,
+      meetingPointJa: event.meeting_point_ja,
+      meetingPointEn: event.meeting_point_en,
+      belongingsJa: event.belongings_ja,
+      belongingsEn: event.belongings_en,
     });
 
     const resendRes = await fetch('https://api.resend.com/emails', {
