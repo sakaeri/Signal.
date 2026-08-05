@@ -15,9 +15,9 @@ import {
   fetchApplications,
   setApplicationStatus,
   setApplicationNotes,
-  sendVenueInfoEmail,
   type ApplicationStatusField,
 } from '../../lib/applicationsAdmin';
+import { sendVenueInfoEmail } from '../../lib/api';
 import { publicUrlFor } from '../../lib/storage';
 import { formatDateLabel, formatCheckinTime } from '../../lib/formatDate';
 import './Admin.css';

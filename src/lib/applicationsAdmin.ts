@@ -1,4 +1,3 @@
-import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { DbApplication } from '../types/db';
 
@@ -37,20 +36,4 @@ export async function setApplicationNotes(id: string, notes: string): Promise<vo
     .select('id');
   if (error) throw error;
   if (!data || data.length === 0) throw new Error(RLS_DENIED_MESSAGE);
-}
-
-/** Sends the venue-info email via the send-venue-info-email Edge Function and marks it sent. */
-export async function sendVenueInfoEmail(applicationId: string): Promise<void> {
-  if (!supabase) throw new Error('Supabase is not configured.');
-  const { data, error } = await supabase.functions.invoke('send-venue-info-email', {
-    body: { applicationId },
-  });
-  if (error) {
-    if (error instanceof FunctionsHttpError) {
-      const body = await error.context.json().catch(() => null);
-      throw new Error(body?.error ?? error.message);
-    }
-    throw error;
-  }
-  if (!data?.ok) throw new Error(data?.error ?? 'メール送信に失敗しました。');
 }

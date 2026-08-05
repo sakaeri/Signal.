@@ -3,7 +3,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useBooking } from '../context/BookingContext';
 import { useSiteData } from '../context/SiteDataContext';
 import { COUNTRY_OPTIONS } from '../i18n/translations';
-import { submitApplication, createPaymentIntent } from '../lib/api';
+import { submitApplication, createPaymentIntent, sendVenueInfoEmail } from '../lib/api';
 import { isStripeConfigured } from '../lib/stripe';
 import PaymentSection, { type StripeCheckoutContext } from './PaymentSection';
 import './ApplyForm.css';
@@ -133,7 +133,7 @@ export default function ApplyForm() {
     }
 
     try {
-      await submitApplication({
+      const { id: applicationId } = await submitApplication({
         eventId,
         name: form.name,
         email: form.email,
@@ -146,6 +146,11 @@ export default function ApplyForm() {
         paymentIntentId,
       });
       setSubmitted(true);
+      // Best-effort: the booking is already confirmed, so a failed send here shouldn't
+      // block success — admin can resend from the dashboard if this doesn't go through.
+      if (applicationId) {
+        sendVenueInfoEmail(applicationId).catch((e) => console.error('[ApplyForm] venue info email failed:', e));
+      }
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       setSubmitError(
