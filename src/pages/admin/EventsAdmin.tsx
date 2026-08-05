@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DbEvent, DbEventImage, DbApplication } from '../../types/db';
 import {
   fetchAdminEvents,
@@ -143,6 +143,13 @@ export default function EventsAdmin() {
   const [formError, setFormError] = useState<string | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isCreating || editingId) {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isCreating, editingId]);
 
   async function reload() {
     setLoading(true);
@@ -495,35 +502,12 @@ export default function EventsAdmin() {
       )}
 
       {(isCreating || editingEvent) && (
-        <div className="admin-card">
+        <div className="admin-card" ref={formRef}>
           <div className="admin-section-title" style={{ fontSize: 17 }}>
             {isCreating ? (duplicateSourceId ? '複製して新規作成' : '新規イベント') : `編集: ${editingEvent?.title_ja}`}
           </div>
+          <div className="admin-form-section-title">基本情報(公開ページに表示されます)</div>
           <div className="admin-form-grid">
-            <div className="admin-field">
-              <label>開始日</label>
-              <input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} />
-            </div>
-            <div className="admin-field">
-              <label>終了日(日帰りの場合は空欄)</label>
-              <input type="date" value={form.endDate} onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))} />
-            </div>
-            <div className="admin-field">
-              <label>集合時間</label>
-              <input
-                type="time"
-                value={form.checkinTimeStart}
-                onChange={(e) => setForm((f) => ({ ...f, checkinTimeStart: e.target.value }))}
-              />
-            </div>
-            <div className="admin-field">
-              <label>集合時間(幅がある場合の終わり・任意)</label>
-              <input
-                type="time"
-                value={form.checkinTimeEnd}
-                onChange={(e) => setForm((f) => ({ ...f, checkinTimeEnd: e.target.value }))}
-              />
-            </div>
             <div className="admin-field">
               <label>タイトル(日本語)</label>
               <input value={form.titleJa} onChange={(e) => setForm((f) => ({ ...f, titleJa: e.target.value }))} />
@@ -541,6 +525,14 @@ export default function EventsAdmin() {
               <input value={form.placeEn} onChange={(e) => setForm((f) => ({ ...f, placeEn: e.target.value }))} />
             </div>
             <div className="admin-field">
+              <label>開始日</label>
+              <input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} />
+            </div>
+            <div className="admin-field">
+              <label>終了日(日帰りの場合は空欄)</label>
+              <input type="date" value={form.endDate} onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))} />
+            </div>
+            <div className="admin-field">
               <label>価格(円)</label>
               <input
                 type="number"
@@ -554,6 +546,26 @@ export default function EventsAdmin() {
                 type="number"
                 value={form.capacity}
                 onChange={(e) => setForm((f) => ({ ...f, capacity: Number(e.target.value) }))}
+              />
+            </div>
+          </div>
+
+          <div className="admin-form-section-title">集合について(公開ページには集合時間のみ表示されます)</div>
+          <div className="admin-form-grid">
+            <div className="admin-field">
+              <label>集合時間</label>
+              <input
+                type="time"
+                value={form.checkinTimeStart}
+                onChange={(e) => setForm((f) => ({ ...f, checkinTimeStart: e.target.value }))}
+              />
+            </div>
+            <div className="admin-field">
+              <label>集合時間(幅がある場合の終わり・任意)</label>
+              <input
+                type="time"
+                value={form.checkinTimeEnd}
+                onChange={(e) => setForm((f) => ({ ...f, checkinTimeEnd: e.target.value }))}
               />
             </div>
             <div className="admin-field">
@@ -605,6 +617,26 @@ export default function EventsAdmin() {
               />
             </div>
             <div className="admin-field">
+              <label>Googleマップのリンク</label>
+              <input
+                value={form.mapUrl}
+                onChange={(e) => setForm((f) => ({ ...f, mapUrl: e.target.value }))}
+                placeholder="https://maps.app.goo.gl/..."
+              />
+            </div>
+            <div className="admin-field">
+              <label>当日の緊急連絡先(電話番号)</label>
+              <input
+                value={form.dayContactPhone}
+                onChange={(e) => setForm((f) => ({ ...f, dayContactPhone: e.target.value }))}
+                placeholder="例: 090-1234-5678"
+              />
+            </div>
+          </div>
+
+          <div className="admin-form-section-title">持ち物(案内メールに使われます)</div>
+          <div className="admin-form-grid">
+            <div className="admin-field">
               <label>持ち物(日本語)</label>
               <textarea
                 rows={2}
@@ -620,22 +652,6 @@ export default function EventsAdmin() {
                 value={form.belongingsEn}
                 onChange={(e) => setForm((f) => ({ ...f, belongingsEn: e.target.value }))}
                 placeholder="e.g. Comfortable clothes, a towel, water"
-              />
-            </div>
-            <div className="admin-field">
-              <label>Googleマップのリンク</label>
-              <input
-                value={form.mapUrl}
-                onChange={(e) => setForm((f) => ({ ...f, mapUrl: e.target.value }))}
-                placeholder="https://maps.app.goo.gl/..."
-              />
-            </div>
-            <div className="admin-field">
-              <label>当日の緊急連絡先(電話番号)</label>
-              <input
-                value={form.dayContactPhone}
-                onChange={(e) => setForm((f) => ({ ...f, dayContactPhone: e.target.value }))}
-                placeholder="例: 090-1234-5678"
               />
             </div>
           </div>

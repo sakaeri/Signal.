@@ -273,6 +273,20 @@
   gap: 16px;
 }
 
+.admin-form-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #6a665c;
+  margin: 24px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(42, 42, 36, 0.12);
+}
+
+.admin-form-section-title:first-of-type {
+  margin-top: 4px;
+}
+
 .admin-form-actions {
   display: flex;
   gap: 12px;
