@@ -55,7 +55,11 @@ export default function ApplyForm() {
 
   const eventOptions = events.map((ev) => ({
     id: ev.id,
-    label: `${ev.title[lang]} (${ev.dateLabel[lang]})`,
+    label:
+      ev.remaining <= 0
+        ? `${ev.title[lang]} (${ev.dateLabel[lang]}) — ${t.soldOutLabel}`
+        : `${ev.title[lang]} (${ev.dateLabel[lang]})`,
+    disabled: ev.remaining <= 0,
   }));
 
   const field = (key: keyof FormState) => ({
@@ -70,6 +74,8 @@ export default function ApplyForm() {
 
   const canSubmit = Boolean(
     eventId &&
+      selectedEvent &&
+      selectedEvent.remaining > 0 &&
       form.name.trim() &&
       EMAIL_RE.test(form.email) &&
       form.country &&
@@ -182,7 +188,7 @@ export default function ApplyForm() {
               >
                 <option value="">{t.selectPlaceholder}</option>
                 {eventOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
+                  <option key={opt.id} value={opt.id} disabled={opt.disabled}>
                     {opt.label}
                   </option>
                 ))}
@@ -279,19 +285,23 @@ export default function ApplyForm() {
               </div>
             )}
 
-            <PaymentSection
-              amountJpy={amountJpy}
-              onReadyChange={setPaymentReady}
-              onStripeReady={setStripeCtx}
-              fallback={{
-                card: form.card,
-                expiry: form.expiry,
-                cvc: form.cvc,
-                onCardChange: (v) => setForm((f) => ({ ...f, card: v })),
-                onExpiryChange: (v) => setForm((f) => ({ ...f, expiry: v })),
-                onCvcChange: (v) => setForm((f) => ({ ...f, cvc: v })),
-              }}
-            />
+            {selectedEvent && selectedEvent.remaining <= 0 ? (
+              <div className="apply-submit-error">{t.soldOutLabel}</div>
+            ) : (
+              <PaymentSection
+                amountJpy={amountJpy}
+                onReadyChange={setPaymentReady}
+                onStripeReady={setStripeCtx}
+                fallback={{
+                  card: form.card,
+                  expiry: form.expiry,
+                  cvc: form.cvc,
+                  onCardChange: (v) => setForm((f) => ({ ...f, card: v })),
+                  onExpiryChange: (v) => setForm((f) => ({ ...f, expiry: v })),
+                  onCvcChange: (v) => setForm((f) => ({ ...f, cvc: v })),
+                }}
+              />
+            )}
 
             <button type="submit" className="apply-submit" disabled={!canSubmit || submitting}>
               {submitting ? '…' : t.submitLabel}

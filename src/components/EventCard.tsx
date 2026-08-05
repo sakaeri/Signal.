@@ -17,8 +17,9 @@ export default function EventCard({ event, isSelected, onSelect, onOpenGallery }
   const dateLabel = event.dateLabel[lang];
   const checkinTime = event.checkinTime[lang];
   const checkinPlace = event.shuttle ? t.meetShuttleValue : t.meetOnsiteValue;
+  const isSoldOut = event.remaining <= 0;
   const remainingLabel = lang === 'ja' ? `残り${event.remaining}名` : `${event.remaining} left`;
-  const buttonLabel = isSelected ? (lang === 'ja' ? '選択中' : 'Selected') : remainingLabel;
+  const buttonLabel = isSoldOut ? t.soldOutLabel : isSelected ? (lang === 'ja' ? '選択中' : 'Selected') : remainingLabel;
 
   return (
     <div className="event-card">
@@ -38,8 +39,9 @@ export default function EventCard({ event, isSelected, onSelect, onOpenGallery }
             type="button"
             className={`event-card-select${isSelected ? ' is-selected' : ''}`}
             onClick={onSelect}
+            disabled={isSoldOut}
           >
-            {buttonLabel} ▼
+            {buttonLabel} {!isSoldOut && '▼'}
           </button>
         </div>
       </div>

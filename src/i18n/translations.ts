@@ -19,6 +19,7 @@ export interface Translations {
   capacityLabel: string;
   peopleSuffix: string;
   remainingLabel: string;
+  soldOutLabel: string;
   checkinLabel: string;
   meetOnsiteValue: string;
   meetShuttleValue: string;
@@ -76,6 +77,7 @@ export const TRANSLATIONS: Record<Lang, Translations> = {
     capacityLabel: '定員',
     peopleSuffix: '名',
     remainingLabel: '残り',
+    soldOutLabel: '満席',
     checkinLabel: '集合時間',
     meetOnsiteValue: '現地',
     meetShuttleValue: '送迎ポイント',
@@ -132,6 +134,7 @@ export const TRANSLATIONS: Record<Lang, Translations> = {
     capacityLabel: 'Capacity',
     peopleSuffix: '',
     remainingLabel: 'Remaining ',
+    soldOutLabel: 'Sold out',
     checkinLabel: 'Check-in',
     meetOnsiteValue: 'On-site',
     meetShuttleValue: 'Shuttle point',

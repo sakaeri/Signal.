@@ -141,6 +141,11 @@
   background: var(--color-accent);
 }
 
+.event-card-select:disabled {
+  background: var(--color-ink-faint);
+  cursor: not-allowed;
+}
+
 @media (max-width: 900px) {
   .events-grid {
     grid-template-columns: 1fr;
