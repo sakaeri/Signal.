@@ -15,6 +15,7 @@ import {
   fetchApplications,
   setApplicationStatus,
   setApplicationNotes,
+  sendVenueInfoEmail,
   type ApplicationStatusField,
 } from '../../lib/applicationsAdmin';
 import { publicUrlFor } from '../../lib/storage';
@@ -129,6 +130,7 @@ export default function EventsAdmin() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
 
   async function reload() {
     setLoading(true);
@@ -262,6 +264,19 @@ export default function EventsAdmin() {
     }
   }
 
+  async function handleSendVenueEmail(app: DbApplication) {
+    if (!confirm(`${app.name}様(${app.email})に会場案内メールを送信しますか?`)) return;
+    setSendingEmailId(app.id);
+    try {
+      await sendVenueInfoEmail(app.id);
+      setApplications((prev) => prev.map((a) => (a.id === app.id ? { ...a, status_venue_info_sent: true } : a)));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSendingEmailId(null);
+    }
+  }
+
   const editingEvent = editingId ? events.find((e) => e.id === editingId) ?? null : null;
   const editingImages = editingId ? images.filter((i) => i.event_id === editingId) : [];
   const editingThumbnail = editingImages.find((i) => i.role === 'thumbnail');
@@ -387,16 +402,28 @@ export default function EventsAdmin() {
                               </button>
                             ))}
                             {next ? (
-                              <button
-                                type="button"
-                                className="admin-button admin-button-secondary"
-                                style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
-                                onClick={() => {
-                                  if (confirm(`${a.name}様の「${next.label}」を完了にしますか?`)) handleToggleStatus(a, next.field);
-                                }}
-                              >
-                                → {next.label}
-                              </button>
+                              next.field === 'status_venue_info_sent' ? (
+                                <button
+                                  type="button"
+                                  className="admin-button admin-button-secondary"
+                                  style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                                  disabled={sendingEmailId === a.id}
+                                  onClick={() => handleSendVenueEmail(a)}
+                                >
+                                  {sendingEmailId === a.id ? '送信中…' : '→ 案内メールを送信'}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="admin-button admin-button-secondary"
+                                  style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                                  onClick={() => {
+                                    if (confirm(`${a.name}様の「${next.label}」を完了にしますか?`)) handleToggleStatus(a, next.field);
+                                  }}
+                                >
+                                  → {next.label}
+                                </button>
+                              )
                             ) : (
                               <span style={{ fontSize: 12, fontWeight: 600 }}>対応完了</span>
                             )}
