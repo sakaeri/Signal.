@@ -188,6 +188,9 @@ export default function EventsAdmin() {
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [activeInlineField, setActiveInlineField] = useState<string | null>(null);
+  const [notesModalAppId, setNotesModalAppId] = useState<string | null>(null);
+  const [notesModalDraft, setNotesModalDraft] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
   const [pendingThumbnailFile, setPendingThumbnailFile] = useState<File | null>(null);
   const [pendingThumbnailPreviewUrl, setPendingThumbnailPreviewUrl] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -342,14 +345,19 @@ export default function EventsAdmin() {
     }
   }
 
-  async function handleNotesBlur(app: DbApplication, notes: string) {
-    if (notes === (app.admin_notes ?? '')) return;
-    setApplications((prev) => prev.map((a) => (a.id === app.id ? { ...a, admin_notes: notes || null } : a)));
+  async function handleSaveNotes() {
+    if (!notesModalAppId) return;
+    const id = notesModalAppId;
+    const notes = notesModalDraft;
+    setSavingNotes(true);
     try {
-      await setApplicationNotes(app.id, notes);
+      await setApplicationNotes(id, notes);
+      setApplications((prev) => prev.map((a) => (a.id === id ? { ...a, admin_notes: notes || null } : a)));
+      setNotesModalAppId(null);
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
-      await reload();
+    } finally {
+      setSavingNotes(false);
     }
   }
 
@@ -526,13 +534,28 @@ export default function EventsAdmin() {
                           </div>
                         </td>
                         <td>
-                          <input
-                            type="text"
-                            defaultValue={a.admin_notes ?? ''}
-                            placeholder="メモ"
-                            style={{ width: 140, border: 'none', borderBottom: '1px solid rgba(42,42,36,0.3)', background: 'none', fontSize: 13 }}
-                            onBlur={(e) => handleNotesBlur(a, e.target.value)}
-                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNotesModalAppId(a.id);
+                              setNotesModalDraft(a.admin_notes ?? '');
+                            }}
+                            style={{
+                              border: 'none',
+                              background: 'none',
+                              cursor: 'pointer',
+                              fontSize: 13,
+                              textAlign: 'left',
+                              color: a.admin_notes ? '#2a2a24' : '#9a9686',
+                              maxWidth: 160,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              borderBottom: '1px dashed rgba(42,42,36,0.3)',
+                            }}
+                          >
+                            {a.admin_notes || 'メモを追加'}
+                          </button>
                         </td>
                       </tr>
                       );
@@ -905,6 +928,47 @@ export default function EventsAdmin() {
           </div>
           <div style={{ opacity: 0.7 }}>{pastEvents.map(renderEventRow)}</div>
         </>
+      )}
+
+      {notesModalAppId && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(20,20,16,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          }}
+          onClick={() => setNotesModalAppId(null)}
+        >
+          <div
+            className="admin-card"
+            style={{ width: '90%', maxWidth: 480, margin: 0 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-section-title" style={{ fontSize: 15 }}>
+              対応メモ — {applications.find((a) => a.id === notesModalAppId)?.name}
+            </div>
+            <textarea
+              autoFocus
+              rows={8}
+              value={notesModalDraft}
+              onChange={(e) => setNotesModalDraft(e.target.value)}
+              placeholder="このお客様への対応メモ"
+              style={{ width: '100%' }}
+            />
+            <div className="admin-form-actions">
+              <button type="button" className="admin-button" onClick={handleSaveNotes} disabled={savingNotes}>
+                {savingNotes ? '保存中…' : '保存'}
+              </button>
+              <button type="button" className="admin-button admin-button-secondary" onClick={() => setNotesModalAppId(null)}>
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
