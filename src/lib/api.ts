@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from './supabase';
 
 export interface ApplicationPayload {
@@ -25,7 +26,13 @@ export async function createPaymentIntent(eventId: string): Promise<{ clientSecr
   const { data, error } = await supabase.functions.invoke('rapid-handler', {
     body: { eventId },
   });
-  if (error) throw error;
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null);
+      throw new Error(body?.error ?? error.message);
+    }
+    throw error;
+  }
   if (!data?.clientSecret) throw new Error(data?.error ?? 'Failed to start payment.');
   return { clientSecret: data.clientSecret as string };
 }
