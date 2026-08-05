@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DbEvent, DbEventImage, DbApplication } from '../../types/db';
+import type { DbEvent, DbEventImage, DbApplication, DbApplicationNote } from '../../types/db';
 import {
   fetchAdminEvents,
   createEvent,
@@ -14,12 +14,15 @@ import {
 import {
   fetchApplications,
   setApplicationStatus,
-  setApplicationNotes,
+  fetchAllApplicationNotes,
+  addApplicationNote,
+  deleteApplicationNote,
   type ApplicationStatusField,
 } from '../../lib/applicationsAdmin';
 import { sendVenueInfoEmail } from '../../lib/api';
 import { publicUrlFor } from '../../lib/storage';
 import { formatDateLabel, formatCheckinTime } from '../../lib/formatDate';
+import { useAuth } from '../../context/AuthContext';
 import ImagePlaceholder from '../../components/ImagePlaceholder';
 import '../../components/Events.css';
 import './Admin.css';
@@ -31,7 +34,7 @@ const STATUS_FIELDS: { field: ApplicationStatusField; label: string }[] = [
   { field: 'status_letter_mailed', label: '手紙郵送' },
 ];
 
-function applicationsToCsv(rows: DbApplication[]): string {
+function applicationsToCsv(rows: DbApplication[], notes: DbApplicationNote[]): string {
   const headers = [
     'created_at',
     'name',
@@ -43,11 +46,15 @@ function applicationsToCsv(rows: DbApplication[]): string {
     'emergency_phone',
     'message',
     ...STATUS_FIELDS.map((s) => s.label),
-    'admin_notes',
+    'notes',
   ];
   const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
   const lines = [headers.join(',')];
   for (const r of rows) {
+    const noteText = notes
+      .filter((n) => n.application_id === r.id)
+      .map((n) => `[${new Date(n.created_at).toLocaleString('ja-JP')} ${n.author}] ${n.content}`)
+      .join(' / ');
     lines.push(
       [
         r.created_at,
@@ -60,7 +67,7 @@ function applicationsToCsv(rows: DbApplication[]): string {
         r.emergency_phone,
         r.message ?? '',
         ...STATUS_FIELDS.map((s) => (r[s.field] ? '済' : '未')),
-        r.admin_notes ?? '',
+        noteText,
       ]
         .map((v) => escape(String(v)))
         .join(','),
@@ -176,6 +183,7 @@ export default function EventsAdmin() {
   const [events, setEvents] = useState<DbEvent[]>([]);
   const [images, setImages] = useState<DbEventImage[]>([]);
   const [applications, setApplications] = useState<DbApplication[]>([]);
+  const [notes, setNotes] = useState<DbApplicationNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -189,8 +197,9 @@ export default function EventsAdmin() {
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [activeInlineField, setActiveInlineField] = useState<string | null>(null);
   const [notesModalAppId, setNotesModalAppId] = useState<string | null>(null);
-  const [notesModalDraft, setNotesModalDraft] = useState('');
-  const [savingNotes, setSavingNotes] = useState(false);
+  const [newNoteDraft, setNewNoteDraft] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
+  const { session } = useAuth();
   const [pendingThumbnailFile, setPendingThumbnailFile] = useState<File | null>(null);
   const [pendingThumbnailPreviewUrl, setPendingThumbnailPreviewUrl] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -216,10 +225,15 @@ export default function EventsAdmin() {
     setLoading(true);
     setError(null);
     try {
-      const [{ events, images }, applications] = await Promise.all([fetchAdminEvents(), fetchApplications()]);
+      const [{ events, images }, applications, notes] = await Promise.all([
+        fetchAdminEvents(),
+        fetchApplications(),
+        fetchAllApplicationNotes(),
+      ]);
       setEvents(events);
       setImages(images);
       setApplications(applications);
+      setNotes(notes);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -345,19 +359,28 @@ export default function EventsAdmin() {
     }
   }
 
-  async function handleSaveNotes() {
-    if (!notesModalAppId) return;
-    const id = notesModalAppId;
-    const notes = notesModalDraft;
-    setSavingNotes(true);
+  async function handleAddNote() {
+    if (!notesModalAppId || !newNoteDraft.trim()) return;
+    setAddingNote(true);
     try {
-      await setApplicationNotes(id, notes);
-      setApplications((prev) => prev.map((a) => (a.id === id ? { ...a, admin_notes: notes || null } : a)));
-      setNotesModalAppId(null);
+      const author = session?.user.email ?? '管理者';
+      const note = await addApplicationNote(notesModalAppId, author, newNoteDraft.trim());
+      setNotes((prev) => [note, ...prev]);
+      setNewNoteDraft('');
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
-      setSavingNotes(false);
+      setAddingNote(false);
+    }
+  }
+
+  async function handleDeleteNote(id: string) {
+    if (!confirm('このメモを削除しますか?この操作は取り消せません。')) return;
+    try {
+      await deleteApplicationNote(id);
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -444,7 +467,7 @@ export default function EventsAdmin() {
                 type="button"
                 className="admin-button admin-button-secondary"
                 disabled={applicants.length === 0}
-                onClick={() => downloadCsv(`applications-${ev.id}.csv`, applicationsToCsv(applicants))}
+                onClick={() => downloadCsv(`applications-${ev.id}.csv`, applicationsToCsv(applicants, notes))}
               >
                 CSVダウンロード
               </button>
@@ -536,25 +559,22 @@ export default function EventsAdmin() {
                         <td>
                           <button
                             type="button"
-                            onClick={() => {
-                              setNotesModalAppId(a.id);
-                              setNotesModalDraft(a.admin_notes ?? '');
-                            }}
+                            onClick={() => setNotesModalAppId(a.id)}
                             style={{
                               border: 'none',
                               background: 'none',
                               cursor: 'pointer',
                               fontSize: 13,
                               textAlign: 'left',
-                              color: a.admin_notes ? '#2a2a24' : '#9a9686',
-                              maxWidth: 160,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
+                              color: notes.some((n) => n.application_id === a.id) ? '#2a2a24' : '#9a9686',
                               borderBottom: '1px dashed rgba(42,42,36,0.3)',
+                              whiteSpace: 'nowrap',
                             }}
                           >
-                            {a.admin_notes || 'メモを追加'}
+                            {(() => {
+                              const count = notes.filter((n) => n.application_id === a.id).length;
+                              return count > 0 ? `メモ ${count}件` : 'メモを追加';
+                            })()}
                           </button>
                         </td>
                       </tr>
@@ -941,30 +961,68 @@ export default function EventsAdmin() {
             justifyContent: 'center',
             zIndex: 100,
           }}
-          onClick={() => setNotesModalAppId(null)}
+          onClick={() => {
+            setNotesModalAppId(null);
+            setNewNoteDraft('');
+          }}
         >
           <div
             className="admin-card"
-            style={{ width: '90%', maxWidth: 480, margin: 0 }}
+            style={{ width: '90%', maxWidth: 480, margin: 0, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="admin-section-title" style={{ fontSize: 15 }}>
               対応メモ — {applications.find((a) => a.id === notesModalAppId)?.name}
             </div>
+
+            <div style={{ overflowY: 'auto', marginBottom: 16, flex: 1 }}>
+              {notes.filter((n) => n.application_id === notesModalAppId).length === 0 ? (
+                <div className="admin-empty">まだメモがありません。</div>
+              ) : (
+                notes
+                  .filter((n) => n.application_id === notesModalAppId)
+                  .map((n) => (
+                    <div key={n.id} style={{ borderBottom: '1px solid rgba(42,42,36,0.1)', padding: '10px 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                        <span className="admin-muted" style={{ fontSize: 12 }}>
+                          {new Date(n.created_at).toLocaleString('ja-JP')} ・ {n.author}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteNote(n.id)}
+                          aria-label="削除"
+                          style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#9a9686', flexShrink: 0 }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{n.content}</div>
+                    </div>
+                  ))
+              )}
+            </div>
+
             <textarea
               autoFocus
-              rows={8}
-              value={notesModalDraft}
-              onChange={(e) => setNotesModalDraft(e.target.value)}
-              placeholder="このお客様への対応メモ"
+              rows={3}
+              value={newNoteDraft}
+              onChange={(e) => setNewNoteDraft(e.target.value)}
+              placeholder="新しいメモを追加"
               style={{ width: '100%' }}
             />
             <div className="admin-form-actions">
-              <button type="button" className="admin-button" onClick={handleSaveNotes} disabled={savingNotes}>
-                {savingNotes ? '保存中…' : '保存'}
+              <button type="button" className="admin-button" onClick={handleAddNote} disabled={addingNote || !newNoteDraft.trim()}>
+                {addingNote ? '追加中…' : '追加'}
               </button>
-              <button type="button" className="admin-button admin-button-secondary" onClick={() => setNotesModalAppId(null)}>
-                キャンセル
+              <button
+                type="button"
+                className="admin-button admin-button-secondary"
+                onClick={() => {
+                  setNotesModalAppId(null);
+                  setNewNoteDraft('');
+                }}
+              >
+                閉じる
               </button>
             </div>
           </div>

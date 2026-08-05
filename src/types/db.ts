@@ -55,5 +55,13 @@ export interface DbApplication {
   status_kit_collected: boolean;
   status_photos_developed: boolean;
   status_letter_mailed: boolean;
-  admin_notes: string | null;
+}
+
+/** A single entry in an applicant's note history (application_notes table). */
+export interface DbApplicationNote {
+  id: string;
+  application_id: string;
+  author: string;
+  content: string;
+  created_at: string;
 }
