@@ -146,13 +146,14 @@ export default function ApplyForm() {
         paymentIntentId,
       });
       setSubmitted(true);
-    } catch {
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
       setSubmitError(
         paymentIntentId
           ? lang === 'ja'
-            ? `決済は完了しましたが、申し込み情報の保存に失敗しました。このお問い合わせ番号を添えてご連絡ください: ${paymentIntentId}`
-            : `Payment succeeded but saving your application failed. Please contact us with this reference: ${paymentIntentId}`
-          : genericError,
+            ? `決済は完了しましたが、申し込み情報の保存に失敗しました(${detail})。このお問い合わせ番号を添えてご連絡ください: ${paymentIntentId}`
+            : `Payment succeeded but saving your application failed (${detail}). Please contact us with this reference: ${paymentIntentId}`
+          : `${genericError} (${detail})`,
       );
     } finally {
       setSubmitting(false);
