@@ -597,7 +597,7 @@ export default function EventsAdmin() {
             {isCreating ? (duplicateSourceId ? '複製して新規作成' : '新規イベント') : `編集: ${editingEvent?.title_ja}`}
           </div>
           <div className="admin-form-section-title">プレビュー(タップして直接入力できます)</div>
-          <div className="event-card" style={{ maxWidth: 460, marginBottom: 8 }}>
+          <div className="event-card" style={{ maxWidth: 640, marginBottom: 8 }}>
             <div className="event-card-image" style={{ cursor: 'pointer' }} onClick={() => thumbnailInputRef.current?.click()} role="button" tabIndex={0}>
               {previewThumbnailUrl ? (
                 <img src={previewThumbnailUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -671,13 +671,55 @@ export default function EventsAdmin() {
                 onChange={(v) => setForm((f) => ({ ...f, titleJa: v }))}
                 onDone={() => setActiveInlineField(null)}
               />
-              <div className="event-card-checkin">
-                集合時間 {previewCheckinTime} ({form.shuttle ? `送迎ポイント: ${form.shuttleLocationJa || '(未入力)'}` : '現地'})
-              </div>
+
+              {activeInlineField === 'checkin' ? (
+                <div className="event-card-checkin" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  集合時間
+                  <input
+                    type="time"
+                    autoFocus
+                    value={form.checkinTimeStart}
+                    onChange={(e) => setForm((f) => ({ ...f, checkinTimeStart: e.target.value }))}
+                  />
+                  〜
+                  <input
+                    type="time"
+                    value={form.checkinTimeEnd}
+                    onChange={(e) => setForm((f) => ({ ...f, checkinTimeEnd: e.target.value }))}
+                  />
+                  <select
+                    value={form.shuttle ? '1' : '0'}
+                    onChange={(e) => setForm((f) => ({ ...f, shuttle: e.target.value === '1' }))}
+                  >
+                    <option value="0">現地集合</option>
+                    <option value="1">送迎あり</option>
+                  </select>
+                  {form.shuttle && (
+                    <input
+                      value={form.shuttleLocationJa}
+                      onChange={(e) => setForm((f) => ({ ...f, shuttleLocationJa: e.target.value }))}
+                      placeholder="送迎ポイント(例: 新宿駅西口)"
+                      style={{ font: 'inherit', border: 'none', borderBottom: '1px dashed #c67c4e', background: 'transparent' }}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setActiveInlineField(null)}
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: 700 }}
+                  >
+                    ✓
+                  </button>
+                </div>
+              ) : (
+                <div className="event-card-checkin admin-tap-edit" onClick={() => setActiveInlineField('checkin')} style={{ cursor: 'pointer' }}>
+                  集合時間 {previewCheckinTime} ({form.shuttle ? `送迎ポイント: ${form.shuttleLocationJa || '(未入力)'}` : '現地'})
+                </div>
+              )}
+
               <div className="event-card-footer">
-                <span className="event-card-price admin-tap-edit">
-                  ¥
-                  {activeInlineField === 'price' ? (
+                {activeInlineField === 'price' ? (
+                  <span className="event-card-price">
+                    ¥
                     <input
                       type="number"
                       autoFocus
@@ -687,16 +729,16 @@ export default function EventsAdmin() {
                       onKeyDown={(e) => e.key === 'Enter' && setActiveInlineField(null)}
                       style={{ font: 'inherit', color: 'inherit', border: 'none', borderBottom: '1px dashed #c67c4e', background: 'transparent', width: 90 }}
                     />
-                  ) : (
-                    <span onClick={() => setActiveInlineField('price')} style={{ cursor: 'pointer' }}>
-                      {form.price.toLocaleString('en-US')}
-                    </span>
-                  )}
-                  /人
-                </span>
-                <span className="event-card-select admin-tap-edit">
-                  残り
-                  {activeInlineField === 'capacity' ? (
+                    /人
+                  </span>
+                ) : (
+                  <span className="event-card-price admin-tap-edit" onClick={() => setActiveInlineField('price')} style={{ cursor: 'pointer' }}>
+                    ¥{form.price.toLocaleString('en-US')}/人
+                  </span>
+                )}
+                {activeInlineField === 'capacity' ? (
+                  <span className="event-card-select">
+                    残り
                     <input
                       type="number"
                       autoFocus
@@ -706,18 +748,18 @@ export default function EventsAdmin() {
                       onKeyDown={(e) => e.key === 'Enter' && setActiveInlineField(null)}
                       style={{ font: 'inherit', color: 'inherit', border: 'none', background: 'transparent', width: 50 }}
                     />
-                  ) : (
-                    <span onClick={() => setActiveInlineField('capacity')} style={{ cursor: 'pointer' }}>
-                      {form.capacity}
-                    </span>
-                  )}
-                  名 ▼
-                </span>
+                    名 ▼
+                  </span>
+                ) : (
+                  <span className="event-card-select admin-tap-edit" onClick={() => setActiveInlineField('capacity')} style={{ cursor: 'pointer' }}>
+                    残り{form.capacity}名 ▼
+                  </span>
+                )}
               </div>
             </div>
           </div>
           <p className="admin-muted" style={{ marginTop: -4, marginBottom: 8 }}>
-            画像・場所・タイトル・日付・価格・定員は、上のプレビューを直接タップして入力できます。
+            画像・場所・タイトル・日付・集合時間・送迎・価格・定員は、上のプレビューを直接タップして入力できます。
           </p>
 
           <div className="admin-form-section-title">英語表記(海外のお客様向け)</div>
@@ -732,53 +774,17 @@ export default function EventsAdmin() {
             </div>
           </div>
 
-          <div className="admin-form-section-title">集合について(集合時間・送迎は公開ページにも表示されます)</div>
+          <div className="admin-form-section-title">集合について(集合時間・送迎は上のプレビューで入力できます)</div>
           <div className="admin-form-grid">
-            <div className="admin-field">
-              <label>集合時間</label>
-              <input
-                type="time"
-                value={form.checkinTimeStart}
-                onChange={(e) => setForm((f) => ({ ...f, checkinTimeStart: e.target.value }))}
-              />
-            </div>
-            <div className="admin-field">
-              <label>集合時間(幅がある場合の終わり・任意)</label>
-              <input
-                type="time"
-                value={form.checkinTimeEnd}
-                onChange={(e) => setForm((f) => ({ ...f, checkinTimeEnd: e.target.value }))}
-              />
-            </div>
-            <div className="admin-field">
-              <label>送迎</label>
-              <select
-                value={form.shuttle ? '1' : '0'}
-                onChange={(e) => setForm((f) => ({ ...f, shuttle: e.target.value === '1' }))}
-              >
-                <option value="0">なし(現地集合・解散)</option>
-                <option value="1">あり</option>
-              </select>
-            </div>
             {form.shuttle && (
-              <>
-                <div className="admin-field">
-                  <label>お迎え場所(日本語)</label>
-                  <input
-                    value={form.shuttleLocationJa}
-                    onChange={(e) => setForm((f) => ({ ...f, shuttleLocationJa: e.target.value }))}
-                    placeholder="例: 新宿駅西口"
-                  />
-                </div>
-                <div className="admin-field">
-                  <label>Pickup location (English)</label>
-                  <input
-                    value={form.shuttleLocationEn}
-                    onChange={(e) => setForm((f) => ({ ...f, shuttleLocationEn: e.target.value }))}
-                    placeholder="e.g. Shinjuku Station West Exit"
-                  />
-                </div>
-              </>
+              <div className="admin-field">
+                <label>Pickup location (English)</label>
+                <input
+                  value={form.shuttleLocationEn}
+                  onChange={(e) => setForm((f) => ({ ...f, shuttleLocationEn: e.target.value }))}
+                  placeholder="e.g. Shinjuku Station West Exit"
+                />
+              </div>
             )}
             <div className="admin-field">
               <label>集合場所の詳細(日本語)</label>
@@ -859,30 +865,13 @@ export default function EventsAdmin() {
           {editingEvent && (
             <div style={{ marginTop: 28, borderTop: '1px solid rgba(42,42,36,0.1)', paddingTop: 20 }}>
               <div className="admin-section-title" style={{ fontSize: 15 }}>
-                画像
+                ギャラリー画像
               </div>
+              <p className="admin-muted" style={{ marginTop: -8, marginBottom: 12 }}>
+                サムネイル(カード表示用)は上のプレビュー画像をタップして変更してください。ここは、タップで開くポップアップ用の複数枚のギャラリー写真です。
+              </p>
 
               <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-                <div className="admin-image-slot">
-                  <label className="admin-muted">サムネイル(カードに表示)</label>
-                  <div className="admin-image-slot-preview">
-                    {editingThumbnail ? (
-                      <img src={publicUrlFor(editingThumbnail.storage_path)} alt="" />
-                    ) : (
-                      '未設定'
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleThumbnailUpload(editingEvent.id, file);
-                      e.target.value = '';
-                    }}
-                  />
-                </div>
-
                 <div className="admin-image-slot" style={{ flex: 1, minWidth: 260 }}>
                   <label className="admin-muted">ギャラリー(タップで開くポップアップ用、複数可)</label>
                   <div className="admin-gallery-grid">
