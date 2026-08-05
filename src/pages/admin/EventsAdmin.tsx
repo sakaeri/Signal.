@@ -286,6 +286,7 @@ export default function EventsAdmin() {
         setPendingThumbnailFile(null);
       } else if (editingId) {
         await updateEvent(editingId, form);
+        if (pendingThumbnailFile) await setEventThumbnail(editingId, pendingThumbnailFile, editingThumbnail);
         await reload();
         cancelEdit();
       }
@@ -306,23 +307,9 @@ export default function EventsAdmin() {
     }
   }
 
-  /** Preview image was tapped and a file chosen: upload now if editing an existing event, otherwise stage it for upload right after the event is created. */
+  /** Just stages the file locally — actually uploaded when 保存 is clicked, same as every other preview field. */
   function handlePreviewThumbnailPicked(file: File) {
-    if (editingId) {
-      handleThumbnailUpload(editingId, file);
-    } else {
-      setPendingThumbnailFile(file);
-    }
-  }
-
-  async function handleThumbnailUpload(eventId: string, file: File) {
-    const previous = images.find((i) => i.event_id === eventId && i.role === 'thumbnail');
-    try {
-      await setEventThumbnail(eventId, file, previous);
-      await reload();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
-    }
+    setPendingThumbnailFile(file);
   }
 
   async function handleGalleryUpload(eventId: string, file: File) {
