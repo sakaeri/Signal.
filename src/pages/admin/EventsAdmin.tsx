@@ -442,7 +442,8 @@ export default function EventsAdmin() {
     .reverse();
 
   const priceById = new Map(events.map((ev) => [ev.id, ev.price]));
-  const totalRevenue = applications.reduce((sum, a) => sum + (priceById.get(a.event_id) ?? 0), 0);
+  const activeApplications = applications.filter((a) => !a.canceled_at);
+  const totalRevenue = activeApplications.reduce((sum, a) => sum + (priceById.get(a.event_id) ?? 0), 0);
 
   function renderEventRow(ev: DbEvent) {
     const thumb = images.find((i) => i.event_id === ev.id && i.role === 'thumbnail');
@@ -702,7 +703,7 @@ export default function EventsAdmin() {
             <div className="admin-stat-label">開催予定</div>
           </div>
           <div className="admin-stat">
-            <div className="admin-stat-value">{applications.length}</div>
+            <div className="admin-stat-value">{activeApplications.length}</div>
             <div className="admin-stat-label">総申込者数</div>
           </div>
           <div className="admin-stat">
