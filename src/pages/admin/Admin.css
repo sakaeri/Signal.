@@ -72,6 +72,7 @@
   font-weight: 600;
   cursor: pointer;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .admin-button:hover {
@@ -90,7 +91,15 @@
 }
 
 .admin-button-danger {
+  background: none;
+  border: 1px solid rgba(179, 69, 47, 0.4);
+  color: #b3452f;
+}
+
+.admin-button-danger:hover {
   background: #b3452f;
+  border-color: #b3452f;
+  color: #fff;
 }
 
 .admin-button-secondary.is-selected {
@@ -132,11 +141,16 @@
   padding: 8px 16px;
   border-radius: 999px;
   border: none;
-  background: none;
+  background: rgba(42, 42, 36, 0.05);
   font-size: 14px;
   cursor: pointer;
   color: #6a665c;
   font-family: inherit;
+  transition: background 0.15s ease;
+}
+
+.admin-tab:hover:not(.is-active) {
+  background: rgba(42, 42, 36, 0.1);
 }
 
 .admin-tab.is-active {
@@ -201,7 +215,7 @@
 .admin-table th,
 .admin-table td {
   text-align: left;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-bottom: 1px solid rgba(42, 42, 36, 0.1);
   vertical-align: top;
 }
@@ -214,8 +228,22 @@
   white-space: nowrap;
 }
 
+.admin-table tbody tr:nth-child(even) {
+  background: rgba(42, 42, 36, 0.02);
+}
+
+.admin-table tbody tr:hover {
+  background: rgba(198, 124, 78, 0.05);
+}
+
 .admin-table-wrap {
   overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(42, 42, 36, 0.08);
+}
+
+.admin-table-wrap .admin-table {
+  border: none;
 }
 
 .admin-event-row {

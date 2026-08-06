@@ -609,7 +609,7 @@ export default function EventsAdmin() {
                             <button
                               type="button"
                               className="admin-button admin-button-danger"
-                              style={{ padding: '6px 12px', fontSize: 12 }}
+                              style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
                               disabled={cancelingId === a.id}
                               onClick={() => handleCancelApplication(a)}
                             >
