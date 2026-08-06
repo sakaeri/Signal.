@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { DbApplication, DbApplicationNote } from '../types/db';
 
@@ -53,4 +54,21 @@ export async function deleteApplicationNote(id: string): Promise<void> {
   if (!supabase) throw new Error('Supabase is not configured.');
   const { error } = await supabase.from('application_notes').delete().eq('id', id);
   if (error) throw error;
+}
+
+/** Refunds the Stripe payment (if any) and marks the application canceled via the cancel-application Edge Function. */
+export async function cancelApplication(applicationId: string): Promise<{ refunded: boolean }> {
+  if (!supabase) throw new Error('Supabase is not configured.');
+  const { data, error } = await supabase.functions.invoke('cancel-application', {
+    body: { applicationId },
+  });
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null);
+      throw new Error(body?.error ?? error.message);
+    }
+    throw error;
+  }
+  if (!data?.ok) throw new Error(data?.error ?? 'キャンセル処理に失敗しました。');
+  return { refunded: Boolean(data.refunded) };
 }

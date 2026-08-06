@@ -17,6 +17,7 @@ import {
   fetchAllApplicationNotes,
   addApplicationNote,
   deleteApplicationNote,
+  cancelApplication,
   type ApplicationStatusField,
 } from '../../lib/applicationsAdmin';
 import { sendVenueInfoEmail } from '../../lib/api';
@@ -195,6 +196,7 @@ export default function EventsAdmin() {
   const [formError, setFormError] = useState<string | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [activeInlineField, setActiveInlineField] = useState<string | null>(null);
   const [notesModalAppId, setNotesModalAppId] = useState<string | null>(null);
   const [newNoteDraft, setNewNoteDraft] = useState('');
@@ -397,6 +399,26 @@ export default function EventsAdmin() {
     }
   }
 
+  async function handleCancelApplication(app: DbApplication) {
+    const warning = app.payment_intent_id
+      ? `${app.name}様の申し込みをキャンセルし、決済分を全額返金します。よろしいですか?この操作は取り消せません。`
+      : `${app.name}様の申し込みをキャンセルしますか?この操作は取り消せません。`;
+    if (!confirm(warning)) return;
+    setCancelingId(app.id);
+    try {
+      const { refunded } = await cancelApplication(app.id);
+      const now = new Date().toISOString();
+      setApplications((prev) =>
+        prev.map((a) => (a.id === app.id ? { ...a, canceled_at: now, refunded_at: refunded ? now : null } : a)),
+      );
+      await reload();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCancelingId(null);
+    }
+  }
+
   const editingEvent = editingId ? events.find((e) => e.id === editingId) ?? null : null;
   const editingImages = editingId ? images.filter((i) => i.event_id === editingId) : [];
   const editingThumbnail = editingImages.find((i) => i.role === 'thumbnail');
@@ -488,13 +510,14 @@ export default function EventsAdmin() {
                       <th>ご要望</th>
                       <th>対応状況</th>
                       <th>対応メモ</th>
+                      <th>キャンセル</th>
                     </tr>
                   </thead>
                   <tbody>
                     {applicants.map((a) => {
                       const next = STATUS_FIELDS.find((s) => !a[s.field]);
                       return (
-                      <tr key={a.id}>
+                      <tr key={a.id} style={a.canceled_at ? { opacity: 0.5 } : undefined}>
                         <td>{new Date(a.created_at).toLocaleString('ja-JP')}</td>
                         <td>{a.name}</td>
                         <td>{a.email}</td>
@@ -576,6 +599,23 @@ export default function EventsAdmin() {
                               return count > 0 ? `メモ ${count}件` : 'メモを追加';
                             })()}
                           </button>
+                        </td>
+                        <td>
+                          {a.canceled_at ? (
+                            <span style={{ fontSize: 12, color: '#9a9686' }}>
+                              キャンセル済み{a.refunded_at ? '(返金済み)' : ''}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="admin-button admin-button-danger"
+                              style={{ padding: '6px 12px', fontSize: 12 }}
+                              disabled={cancelingId === a.id}
+                              onClick={() => handleCancelApplication(a)}
+                            >
+                              {cancelingId === a.id ? '処理中…' : 'キャンセル'}
+                            </button>
+                          )}
                         </td>
                       </tr>
                       );

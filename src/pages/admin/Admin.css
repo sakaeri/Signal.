@@ -374,3 +374,41 @@
   text-align: center;
   color: #9a9686;
 }
+
+@media (max-width: 720px) {
+  .admin-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .admin-tabs {
+    order: 3;
+    width: 100%;
+  }
+
+  .admin-body {
+    padding: 16px;
+  }
+
+  .admin-stats {
+    flex-direction: column;
+  }
+
+  .admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-event-row {
+    flex-wrap: wrap;
+  }
+
+  .admin-event-actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .admin-card {
+    padding: 16px;
+  }
+}

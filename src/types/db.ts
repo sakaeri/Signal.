@@ -55,6 +55,8 @@ export interface DbApplication {
   status_kit_collected: boolean;
   status_photos_developed: boolean;
   status_letter_mailed: boolean;
+  canceled_at: string | null;
+  refunded_at: string | null;
 }
 
 /** A single entry in an applicant's note history (application_notes table). */
