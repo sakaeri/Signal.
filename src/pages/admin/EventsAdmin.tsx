@@ -207,6 +207,8 @@ export default function EventsAdmin() {
   const [pendingThumbnailPreviewUrl, setPendingThumbnailPreviewUrl] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const eventRowRefs = useRef(new Map<string, HTMLDivElement>());
+  const [unresolvedCursor, setUnresolvedCursor] = useState(0);
 
   useEffect(() => {
     if (isCreating || editingId) {
@@ -445,7 +447,17 @@ export default function EventsAdmin() {
   const startDateById = new Map(events.map((ev) => [ev.id, ev.start_date]));
   const activeApplications = applications.filter((a) => !a.canceled_at);
   const totalRevenue = activeApplications.reduce((sum, a) => sum + (priceById.get(a.event_id) ?? 0), 0);
-  const unresolvedCount = activeApplications.filter((a) => STATUS_FIELDS.some((s) => !a[s.field])).length;
+  const unresolvedApplications = activeApplications.filter((a) => STATUS_FIELDS.some((s) => !a[s.field]));
+  const unresolvedEventIds = Array.from(new Set(unresolvedApplications.map((a) => a.event_id)));
+
+  function handleJumpToUnresolved() {
+    if (unresolvedEventIds.length === 0) return;
+    const id = unresolvedEventIds[unresolvedCursor % unresolvedEventIds.length];
+    setUnresolvedCursor((c) => c + 1);
+    setExpandedEventId(id);
+    eventRowRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   const now = new Date();
   const thisMonthCount = activeApplications.filter((a) => {
     const startDate = startDateById.get(a.event_id);
@@ -459,7 +471,13 @@ export default function EventsAdmin() {
     const applicants = applications.filter((a) => a.event_id === ev.id);
     const isExpanded = expandedEventId === ev.id;
     return (
-      <div key={ev.id}>
+      <div
+        key={ev.id}
+        ref={(el) => {
+          if (el) eventRowRefs.current.set(ev.id, el);
+          else eventRowRefs.current.delete(ev.id);
+        }}
+      >
         <div className="admin-event-row">
           <div className="admin-event-thumb">{thumb ? <img src={publicUrlFor(thumb.storage_path)} alt="" /> : '画像なし'}</div>
           <div className="admin-event-info">
@@ -715,10 +733,16 @@ export default function EventsAdmin() {
             <div className="admin-stat-value">¥{totalRevenue.toLocaleString()}</div>
             <div className="admin-stat-label">総売上</div>
           </div>
-          <div className="admin-stat">
-            <div className="admin-stat-value">{unresolvedCount}</div>
+          <button
+            type="button"
+            className="admin-stat admin-stat-clickable"
+            disabled={unresolvedApplications.length === 0}
+            title={unresolvedEventIds.length > 1 ? 'タップで未対応の申し込みへ移動(もう一度タップで次へ)' : 'タップで未対応の申し込みへ移動'}
+            onClick={handleJumpToUnresolved}
+          >
+            <div className="admin-stat-value">{unresolvedApplications.length}</div>
             <div className="admin-stat-label">未対応</div>
-          </div>
+          </button>
           <div className="admin-stat">
             <div className="admin-stat-value">{thisMonthCount}</div>
             <div className="admin-stat-label">今月の参加数</div>
