@@ -199,6 +199,7 @@ export default function EventsAdmin() {
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [activeInlineField, setActiveInlineField] = useState<string | null>(null);
   const [notesModalAppId, setNotesModalAppId] = useState<string | null>(null);
+  const [messageModalText, setMessageModalText] = useState<string | null>(null);
   const [newNoteDraft, setNewNoteDraft] = useState('');
   const [addingNote, setAddingNote] = useState(false);
   const { session } = useAuth();
@@ -502,10 +503,7 @@ export default function EventsAdmin() {
                   <thead>
                     <tr>
                       <th>申込日時</th>
-                      <th>お名前</th>
-                      <th>メール</th>
-                      <th>国</th>
-                      <th>電話番号</th>
+                      <th>お客様情報</th>
                       <th>緊急連絡先</th>
                       <th>ご要望</th>
                       <th>対応状況</th>
@@ -518,15 +516,45 @@ export default function EventsAdmin() {
                       const next = STATUS_FIELDS.find((s) => !a[s.field]);
                       return (
                       <tr key={a.id} style={a.canceled_at ? { opacity: 0.5 } : undefined}>
-                        <td>{new Date(a.created_at).toLocaleString('ja-JP')}</td>
-                        <td>{a.name}</td>
-                        <td>{a.email}</td>
-                        <td>{a.country}</td>
-                        <td>{a.phone}</td>
-                        <td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{new Date(a.created_at).toLocaleString('ja-JP')}</td>
+                        <td style={{ minWidth: 160 }}>
+                          <div>{a.name}</div>
+                          <div className="admin-muted" style={{ fontSize: 12 }}>
+                            {a.email}
+                          </div>
+                          <div className="admin-muted" style={{ fontSize: 12 }}>
+                            {a.country} ・ {a.phone}
+                          </div>
+                        </td>
+                        <td style={{ minWidth: 140 }}>
                           {a.emergency_name}({a.emergency_relation}) / {a.emergency_phone}
                         </td>
-                        <td>{a.message || '—'}</td>
+                        <td style={{ maxWidth: 160 }}>
+                          {a.message ? (
+                            <button
+                              type="button"
+                              onClick={() => setMessageModalText(a.message)}
+                              style={{
+                                border: 'none',
+                                background: 'none',
+                                cursor: 'pointer',
+                                fontSize: 13,
+                                textAlign: 'left',
+                                color: '#2a2a24',
+                                borderBottom: '1px dashed rgba(42,42,36,0.3)',
+                                display: 'block',
+                                maxWidth: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {a.message}
+                            </button>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
                             {STATUS_FIELDS.filter((s) => a[s.field]).map((s) => (
@@ -1062,6 +1090,33 @@ export default function EventsAdmin() {
                   setNewNoteDraft('');
                 }}
               >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {messageModalText && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(20,20,16,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          }}
+          onClick={() => setMessageModalText(null)}
+        >
+          <div className="admin-card" style={{ width: '90%', maxWidth: 480, margin: 0 }} onClick={(e) => e.stopPropagation()}>
+            <div className="admin-section-title" style={{ fontSize: 15 }}>
+              ご要望
+            </div>
+            <div style={{ whiteSpace: 'pre-wrap', maxHeight: '60vh', overflowY: 'auto' }}>{messageModalText}</div>
+            <div className="admin-form-actions">
+              <button type="button" className="admin-button admin-button-secondary" onClick={() => setMessageModalText(null)}>
                 閉じる
               </button>
             </div>
