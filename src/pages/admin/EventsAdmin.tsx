@@ -454,8 +454,16 @@ export default function EventsAdmin() {
     if (unresolvedEventIds.length === 0) return;
     const id = unresolvedEventIds[unresolvedCursor % unresolvedEventIds.length];
     setUnresolvedCursor((c) => c + 1);
+    const row = eventRowRefs.current.get(id);
+    if (!row) {
+      const orphan = unresolvedApplications.find((a) => a.event_id === id);
+      alert(
+        `「${orphan?.name ?? '不明'}」様の申し込みは、削除済みか存在しないイベント(id: ${id})に紐づいているため管理画面に表示できません。Supabaseのapplicationsテーブルで直接確認してください。`,
+      );
+      return;
+    }
     setExpandedEventId(id);
-    eventRowRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   const now = new Date();
