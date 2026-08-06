@@ -469,6 +469,7 @@ export default function EventsAdmin() {
   function renderEventRow(ev: DbEvent) {
     const thumb = images.find((i) => i.event_id === ev.id && i.role === 'thumbnail');
     const applicants = applications.filter((a) => a.event_id === ev.id);
+    const activeApplicantCount = applicants.filter((a) => !a.canceled_at).length;
     const isExpanded = expandedEventId === ev.id;
     return (
       <div
@@ -495,7 +496,7 @@ export default function EventsAdmin() {
               className={`admin-button admin-button-secondary${isExpanded ? ' is-selected' : ''}`}
               onClick={() => setExpandedEventId(isExpanded ? null : ev.id)}
             >
-              申し込み {applicants.length}件 {isExpanded ? '▲' : '▼'}
+              申し込み {activeApplicantCount}件 {isExpanded ? '▲' : '▼'}
             </button>
             {!isPastEvent(ev) && (
               <button type="button" className="admin-button admin-button-secondary" onClick={() => startEdit(ev)}>
