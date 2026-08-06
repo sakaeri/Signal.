@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { publicUrlFor } from '../lib/storage';
 import { mapEvents } from '../lib/mapEvent';
+import { fetchSiteSettings, DEFAULT_INQUIRY_EMAIL } from '../lib/siteSettings';
 import type { DbEvent, DbEventImage, DbSiteImage } from '../types/db';
 import type { EventRecord } from '../types/event';
 
@@ -21,6 +22,7 @@ interface SiteDataContextValue {
   siteImages: Record<string, string>;
   siteImagesLoading: boolean;
   reloadSiteImages: () => Promise<void>;
+  inquiryEmail: string;
 }
 
 const SiteDataContext = createContext<SiteDataContextValue | null>(null);
@@ -85,14 +87,27 @@ export function SiteDataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const [inquiryEmail, setInquiryEmail] = useState(DEFAULT_INQUIRY_EMAIL);
+
+  const reloadSiteSettings = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const settings = await fetchSiteSettings();
+      if (settings.inquiry_email) setInquiryEmail(settings.inquiry_email);
+    } catch {
+      // Non-critical: keep showing the default placeholder address.
+    }
+  }, []);
+
   useEffect(() => {
     reloadEvents();
     reloadSiteImages();
-  }, [reloadEvents, reloadSiteImages]);
+    reloadSiteSettings();
+  }, [reloadEvents, reloadSiteImages, reloadSiteSettings]);
 
   const value = useMemo<SiteDataContextValue>(
-    () => ({ events, eventsLoading, eventsError, reloadEvents, siteImages, siteImagesLoading, reloadSiteImages }),
-    [events, eventsLoading, eventsError, reloadEvents, siteImages, siteImagesLoading, reloadSiteImages],
+    () => ({ events, eventsLoading, eventsError, reloadEvents, siteImages, siteImagesLoading, reloadSiteImages, inquiryEmail }),
+    [events, eventsLoading, eventsError, reloadEvents, siteImages, siteImagesLoading, reloadSiteImages, inquiryEmail],
   );
 
   return <SiteDataContext.Provider value={value}>{children}</SiteDataContext.Provider>;

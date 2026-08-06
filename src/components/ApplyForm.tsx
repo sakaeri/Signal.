@@ -41,7 +41,7 @@ const INITIAL_FORM: FormState = {
 export default function ApplyForm() {
   const { t, lang } = useLanguage();
   const { selectedEventId, setSelectedEventId } = useBooking();
-  const { events } = useSiteData();
+  const { events, inquiryEmail } = useSiteData();
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [paymentReady, setPaymentReady] = useState(false);
   const [stripeCtx, setStripeCtx] = useState<StripeCheckoutContext | null>(null);
@@ -179,6 +179,11 @@ export default function ApplyForm() {
             <div className="apply-success-check">✓</div>
             <div className="apply-success-title">{t.successTitle}</div>
             <div className="apply-success-body">{t.successBody}</div>
+            <div className="apply-success-body" style={{ marginTop: 4 }}>
+              {lang === 'ja'
+                ? `メールが届かない場合は ${inquiryEmail} までお問い合わせください。`
+                : `If you don't receive it, please contact us at ${inquiryEmail}.`}
+            </div>
           </div>
         ) : (
           <form className="apply-form" onSubmit={handleSubmit}>

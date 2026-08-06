@@ -38,6 +38,13 @@ export interface DbSiteImage {
   updated_at: string;
 }
 
+/** Generic key/value store for small site-wide settings (e.g. inquiry_email). */
+export interface DbSiteSetting {
+  key: string;
+  value: string;
+  updated_at: string;
+}
+
 export interface DbApplication {
   id: string;
   created_at: string;

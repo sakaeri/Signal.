@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DbSiteImage } from '../../types/db';
 import { fetchSiteImageRows, setSiteImage, clearSiteImage } from '../../lib/siteImagesAdmin';
+import { fetchSiteSettings, setSiteSetting, DEFAULT_INQUIRY_EMAIL } from '../../lib/siteSettings';
 import { publicUrlFor } from '../../lib/storage';
 import './Admin.css';
 
@@ -68,10 +69,16 @@ export default function SiteImagesAdmin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [inquiryEmail, setInquiryEmail] = useState(DEFAULT_INQUIRY_EMAIL);
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [emailSaved, setEmailSaved] = useState(false);
+
   async function reload() {
     setLoading(true);
     try {
       setRows(await fetchSiteImageRows());
+      const settings = await fetchSiteSettings();
+      if (settings.inquiry_email) setInquiryEmail(settings.inquiry_email);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -84,6 +91,19 @@ export default function SiteImagesAdmin() {
     reload();
   }, []);
 
+  async function handleSaveInquiryEmail() {
+    setSavingEmail(true);
+    setEmailSaved(false);
+    try {
+      await setSiteSetting('inquiry_email', inquiryEmail.trim());
+      setEmailSaved(true);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingEmail(false);
+    }
+  }
+
   const rowFor = (slot: string) => rows.find((r) => r.slot === slot);
 
   return (
@@ -95,6 +115,33 @@ export default function SiteImagesAdmin() {
 
       {loading && <div className="admin-empty">読み込み中…</div>}
       {error && <div className="admin-error">{error}</div>}
+
+      {!loading && !error && (
+        <div className="admin-card">
+          <div className="admin-section-title" style={{ fontSize: 16 }}>
+            問い合わせ用メールアドレス
+          </div>
+          <p className="admin-muted" style={{ marginTop: -8, marginBottom: 12 }}>
+            申し込み完了画面に「メールが届かない場合はこちらへ」として表示されます。
+          </p>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="admin-field" style={{ flex: 1, minWidth: 240 }}>
+              <input
+                type="email"
+                value={inquiryEmail}
+                onChange={(e) => {
+                  setInquiryEmail(e.target.value);
+                  setEmailSaved(false);
+                }}
+              />
+            </div>
+            <button type="button" className="admin-button" onClick={handleSaveInquiryEmail} disabled={savingEmail}>
+              {savingEmail ? '保存中…' : '保存'}
+            </button>
+            {emailSaved && <span className="admin-muted">保存しました</span>}
+          </div>
+        </div>
+      )}
 
       {!loading && !error && (
         <>
