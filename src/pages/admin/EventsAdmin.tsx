@@ -388,7 +388,10 @@ export default function EventsAdmin() {
   }
 
   async function handleSendVenueEmail(app: DbApplication) {
-    if (!confirm(`${app.name}様(${app.email})に会場案内メールを送信しますか?`)) return;
+    const message = app.status_venue_info_sent
+      ? `${app.name}様(${app.email})に更新後の案内メールを送り直します(件名に【更新】と付きます)。よろしいですか?`
+      : `${app.name}様(${app.email})に会場案内メールを送信しますか?`;
+    if (!confirm(message)) return;
     setSendingEmailId(app.id);
     try {
       await sendVenueInfoEmail(app.id);
@@ -558,26 +561,46 @@ export default function EventsAdmin() {
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
                             {STATUS_FIELDS.filter((s) => a[s.field]).map((s) => (
-                              <button
-                                key={s.field}
-                                type="button"
-                                title="取り消す"
-                                onClick={() => {
-                                  if (confirm(`「${s.label}」を未対応に戻しますか?`)) handleToggleStatus(a, s.field);
-                                }}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: 0,
-                                  fontSize: 12,
-                                  color: 'var(--color-ink-mute)',
-                                  cursor: 'pointer',
-                                  textDecoration: 'line-through',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                ✓ {s.label}
-                              </button>
+                              <div key={s.field} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button
+                                  type="button"
+                                  title="取り消す"
+                                  onClick={() => {
+                                    if (confirm(`「${s.label}」を未対応に戻しますか?`)) handleToggleStatus(a, s.field);
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    fontSize: 12,
+                                    color: 'var(--color-ink-mute)',
+                                    cursor: 'pointer',
+                                    textDecoration: 'line-through',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  ✓ {s.label}
+                                </button>
+                                {s.field === 'status_venue_info_sent' && (
+                                  <button
+                                    type="button"
+                                    title="場所や持ち物を修正した後など、最新情報を送り直します(件名に【更新】と付きます)"
+                                    disabled={sendingEmailId === a.id}
+                                    onClick={() => handleSendVenueEmail(a)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      padding: 0,
+                                      fontSize: 12,
+                                      color: '#c67c4e',
+                                      cursor: 'pointer',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {sendingEmailId === a.id ? '送信中…' : '更新を再送'}
+                                  </button>
+                                )}
+                              </div>
                             ))}
                             {next ? (
                               next.field === 'status_venue_info_sent' ? (

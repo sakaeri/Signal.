@@ -56,6 +56,7 @@ function buildEmailHtml(params: {
   belongingsEn: string | null;
   mapUrl: string | null;
   dayContactPhone: string | null;
+  isUpdate: boolean;
 }): string {
   const meet = params.shuttle
     ? `送迎あり: ${params.shuttleLocationJa ?? ''} にお集まりください / Shuttle pickup at ${params.shuttleLocationEn ?? ''}`
@@ -69,9 +70,16 @@ function buildEmailHtml(params: {
   const contactNote = params.dayContactPhone
     ? `<p>当日連絡が取れない・迷った場合はこちらへお電話ください: <strong>${params.dayContactPhone}</strong><br/>If you get lost or need to reach us on the day, please call: <strong>${params.dayContactPhone}</strong></p>`
     : '';
+  const updateBanner = params.isUpdate
+    ? `<p style="background: #fbeee7; border-left: 3px solid #c67c4e; padding: 10px 14px; margin-bottom: 20px;">
+         <strong>【内容更新】以前お送りした案内から内容が変更されました。今後のご参考は必ずこちらの最新メールをご覧ください。</strong><br/>
+         <strong>[Updated] This replaces our earlier email — please refer to this version, not the previous one.</strong>
+       </p>`
+    : '';
 
   return `
     <div style="font-family: sans-serif; line-height: 1.8; color: #2a2a24;">
+      ${updateBanner}
       <p>${params.name} 様</p>
       <p>この度は「${params.titleJa}」にお申し込みいただき、ありがとうございます。<br/>当日の集合場所・時間のご案内です。</p>
       <table style="margin: 16px 0; border-collapse: collapse;">
@@ -122,10 +130,11 @@ Deno.serve(async (req) => {
 
     const { data: application, error: appError } = await supabase
       .from('applications')
-      .select('id, name, email, event_id')
+      .select('id, name, email, event_id, status_venue_info_sent')
       .eq('id', applicationId)
       .single();
     if (appError || !application) return jsonError(404, 'Application not found');
+    const isUpdate = application.status_venue_info_sent === true;
 
     const { data: event, error: eventError } = await supabase
       .from('events')
@@ -153,7 +162,12 @@ Deno.serve(async (req) => {
       belongingsEn: event.belongings_en,
       mapUrl: event.map_url,
       dayContactPhone: event.day_contact_phone,
+      isUpdate,
     });
+
+    const subject = isUpdate
+      ? `【Signal.】【更新】${event.title_ja} 会場のご案内 / Updated venue details`
+      : `【Signal.】${event.title_ja} 会場のご案内 / Venue details`;
 
     const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -164,7 +178,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: EMAIL_FROM,
         to: [application.email],
-        subject: `【Signal.】${event.title_ja} 会場のご案内 / Venue details`,
+        subject,
         html,
       }),
     });
