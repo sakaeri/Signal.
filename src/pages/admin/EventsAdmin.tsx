@@ -442,8 +442,17 @@ export default function EventsAdmin() {
     .reverse();
 
   const priceById = new Map(events.map((ev) => [ev.id, ev.price]));
+  const startDateById = new Map(events.map((ev) => [ev.id, ev.start_date]));
   const activeApplications = applications.filter((a) => !a.canceled_at);
   const totalRevenue = activeApplications.reduce((sum, a) => sum + (priceById.get(a.event_id) ?? 0), 0);
+  const unresolvedCount = activeApplications.filter((a) => STATUS_FIELDS.some((s) => !a[s.field])).length;
+  const now = new Date();
+  const thisMonthCount = activeApplications.filter((a) => {
+    const startDate = startDateById.get(a.event_id);
+    if (!startDate) return false;
+    const d = new Date(startDate);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).length;
 
   function renderEventRow(ev: DbEvent) {
     const thumb = images.find((i) => i.event_id === ev.id && i.role === 'thumbnail');
@@ -703,12 +712,16 @@ export default function EventsAdmin() {
             <div className="admin-stat-label">開催予定</div>
           </div>
           <div className="admin-stat">
-            <div className="admin-stat-value">{activeApplications.length}</div>
-            <div className="admin-stat-label">総申込者数</div>
-          </div>
-          <div className="admin-stat">
             <div className="admin-stat-value">¥{totalRevenue.toLocaleString()}</div>
             <div className="admin-stat-label">総売上</div>
+          </div>
+          <div className="admin-stat">
+            <div className="admin-stat-value">{unresolvedCount}</div>
+            <div className="admin-stat-label">未対応</div>
+          </div>
+          <div className="admin-stat">
+            <div className="admin-stat-value">{thisMonthCount}</div>
+            <div className="admin-stat-label">今月の参加数</div>
           </div>
         </div>
       )}
