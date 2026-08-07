@@ -25,15 +25,20 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
 );
 
-function buildEmailHtml(params: { name: string; titleJa: string; titleEn: string }): string {
+function formatDateRange(startDate: string, endDate: string | null): string {
+  if (!endDate || endDate === startDate) return startDate;
+  return `${startDate} 〜 ${endDate}`;
+}
+
+function buildEmailHtml(params: { name: string; titleJa: string; titleEn: string; dateRange: string }): string {
   return `
     <div style="font-family: sans-serif; line-height: 1.8; color: #2a2a24;">
       <p>${params.name} 様</p>
-      <p>「${params.titleJa}」で現像したお写真とお手紙を発送いたしました。到着まで今しばらくお待ちください。</p>
+      <p>${params.dateRange}に開催した「${params.titleJa}」で現像したお写真とお手紙を発送いたしました。到着まで今しばらくお待ちください。</p>
       <p>この度はご参加いただき、誠にありがとうございました。</p>
       <hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e2d8;" />
       <p>Dear ${params.name},</p>
-      <p>We've mailed your developed photos and letter from "${params.titleEn}". Please allow a little time for delivery.</p>
+      <p>We've mailed your developed photos and letter from "${params.titleEn}" (${params.dateRange}). Please allow a little time for delivery.</p>
       <p>Thank you again for joining us.</p>
       <p style="color: #9a9686; font-size: 12px; margin-top: 32px;">— Signal.</p>
     </div>
@@ -68,12 +73,17 @@ Deno.serve(async (req) => {
 
     const { data: event, error: eventError } = await supabase
       .from('events')
-      .select('title_ja, title_en')
+      .select('title_ja, title_en, start_date, end_date')
       .eq('id', application.event_id)
       .single();
     if (eventError || !event) return jsonError(404, 'Event not found');
 
-    const html = buildEmailHtml({ name: application.name, titleJa: event.title_ja, titleEn: event.title_en });
+    const html = buildEmailHtml({
+      name: application.name,
+      titleJa: event.title_ja,
+      titleEn: event.title_en,
+      dateRange: formatDateRange(event.start_date, event.end_date),
+    });
 
     const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
