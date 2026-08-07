@@ -3,7 +3,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { useBooking } from '../context/BookingContext';
 import { useSiteData } from '../context/SiteDataContext';
 import { COUNTRY_OPTIONS } from '../i18n/translations';
-import { submitApplication, createPaymentIntent, sendVenueInfoEmail } from '../lib/api';
+import { submitApplication, createPaymentIntent, sendVenueInfoEmail, refundOrphanedPayment } from '../lib/api';
 import { isStripeConfigured } from '../lib/stripe';
 import PaymentSection, { type StripeCheckoutContext } from './PaymentSection';
 import './ApplyForm.css';
@@ -153,13 +153,25 @@ export default function ApplyForm() {
       }
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      setSubmitError(
-        paymentIntentId
-          ? lang === 'ja'
-            ? `決済は完了しましたが、申し込み情報の保存に失敗しました(${detail})。このお問い合わせ番号を添えてご連絡ください: ${paymentIntentId}`
-            : `Payment succeeded but saving your application failed (${detail}). Please contact us with this reference: ${paymentIntentId}`
-          : `${genericError} (${detail})`,
-      );
+      if (!paymentIntentId) {
+        setSubmitError(`${genericError} (${detail})`);
+      } else {
+        try {
+          await refundOrphanedPayment(paymentIntentId, detail);
+          setSubmitError(
+            lang === 'ja'
+              ? `申し込み情報の保存に失敗したため、決済分は自動的に全額返金いたしました(${detail})。お手数ですが、もう一度お申し込みください。`
+              : `Saving your application failed, so your payment was automatically refunded in full (${detail}). Please try applying again.`,
+          );
+        } catch (refundErr) {
+          const refundDetail = refundErr instanceof Error ? refundErr.message : String(refundErr);
+          setSubmitError(
+            lang === 'ja'
+              ? `決済は完了しましたが、申し込み情報の保存に失敗しました(${detail})。自動返金にも失敗しました(${refundDetail})。このお問い合わせ番号を添えてご連絡ください: ${paymentIntentId}`
+              : `Payment succeeded but saving your application failed (${detail}), and the automatic refund also failed (${refundDetail}). Please contact us with this reference: ${paymentIntentId}`,
+          );
+        }
+      }
     } finally {
       setSubmitting(false);
     }

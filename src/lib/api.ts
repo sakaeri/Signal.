@@ -40,7 +40,10 @@ export async function createPaymentIntent(eventId: string): Promise<{ clientSecr
 /**
  * Submits a completed application to the `applications` table in Supabase
  * (insert-only for the anon role — see the RLS policy in the project setup).
- * Returns the new row's id (null in the unconfigured/simulated-success path).
+ * Generates the id client-side and skips .select() on the insert: reading
+ * the row back would need a SELECT policy for anon too, and granting one
+ * would let anyone read every applicant's name/email/phone. Returns the
+ * generated id (null in the unconfigured/simulated-success path).
  */
 export async function submitApplication(payload: ApplicationPayload): Promise<{ id: string | null }> {
   if (!isSupabaseConfigured || !supabase) {
@@ -51,27 +54,26 @@ export async function submitApplication(payload: ApplicationPayload): Promise<{ 
     return { id: null };
   }
 
-  const { data, error } = await supabase
-    .from('applications')
-    .insert({
-      event_id: payload.eventId,
-      name: payload.name,
-      email: payload.email,
-      country: payload.country,
-      phone: payload.phone,
-      emergency_name: payload.emergencyName,
-      emergency_relation: payload.emergencyRelation,
-      emergency_phone: payload.emergencyPhone,
-      message: payload.message || null,
-      payment_intent_id: payload.paymentIntentId,
-    })
-    .select('id');
+  const id = crypto.randomUUID();
+  const { error } = await supabase.from('applications').insert({
+    id,
+    event_id: payload.eventId,
+    name: payload.name,
+    email: payload.email,
+    country: payload.country,
+    phone: payload.phone,
+    emergency_name: payload.emergencyName,
+    emergency_relation: payload.emergencyRelation,
+    emergency_phone: payload.emergencyPhone,
+    message: payload.message || null,
+    payment_intent_id: payload.paymentIntentId,
+  });
 
   if (error) {
     throw new Error(`Application submission failed: ${error.message}`);
   }
 
-  return { id: data?.[0]?.id ?? null };
+  return { id };
 }
 
 /**
@@ -91,4 +93,26 @@ export async function sendVenueInfoEmail(applicationId: string): Promise<void> {
     throw error;
   }
   if (!data?.ok) throw new Error(data?.error ?? 'メール送信に失敗しました。');
+}
+
+/**
+ * Calls the refund-orphaned-payment Edge Function: for the case where a Stripe
+ * payment succeeded but saving the application afterward failed, so the guest
+ * would otherwise be charged with no booking on record.
+ */
+export async function refundOrphanedPayment(paymentIntentId: string, saveError: string): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('Supabase is not configured.');
+  }
+  const { data, error } = await supabase.functions.invoke('refund-orphaned-payment', {
+    body: { paymentIntentId, saveError },
+  });
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null);
+      throw new Error(body?.error ?? error.message);
+    }
+    throw error;
+  }
+  if (!data?.refunded) throw new Error(data?.error ?? '返金に失敗しました。');
 }
