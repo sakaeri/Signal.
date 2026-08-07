@@ -229,7 +229,15 @@ export default function ApplyForm() {
               <label className="apply-label" htmlFor="email">
                 {t.labelEmail}
               </label>
-              <input id="email" type="email" className="apply-input" placeholder="you@example.com" {...field('email')} />
+              <input
+                id="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                className="apply-input"
+                placeholder="you@example.com"
+                {...field('email')}
+              />
             </div>
 
             <div className="apply-field">

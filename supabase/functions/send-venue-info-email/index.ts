@@ -58,15 +58,17 @@ function buildEmailHtml(params: {
   dayContactPhone: string | null;
   isUpdate: boolean;
 }): string {
-  const meet = params.shuttle
-    ? `送迎あり: ${params.shuttleLocationJa ?? ''} にお集まりください / Shuttle pickup at ${params.shuttleLocationEn ?? ''}`
-    : `現地集合・解散です / Meet on-site`;
+  const meetJa = params.shuttle
+    ? `送迎あり: ${params.shuttleLocationJa ?? ''} にお集まりください`
+    : `現地集合・解散です`;
+  const meetEn = params.shuttle ? `Shuttle pickup at ${params.shuttleLocationEn ?? ''}` : `Meet on-site`;
 
   const row = (label: string, value: string | null) =>
     value ? `<tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">${label}</td><td>${value}</td></tr>` : '';
-  const mapRow = params.mapUrl
-    ? `<tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">地図 / Map</td><td><a href="${params.mapUrl}">${params.mapUrl}</a></td></tr>`
-    : '';
+  const mapRow = (label: string) =>
+    params.mapUrl
+      ? `<tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">${label}</td><td><a href="${params.mapUrl}">${params.mapUrl}</a></td></tr>`
+      : '';
   const contactNote = params.dayContactPhone
     ? `<p>当日連絡が取れない・迷った場合はこちらへお電話ください: <strong>${params.dayContactPhone}</strong><br/>If you get lost or need to reach us on the day, please call: <strong>${params.dayContactPhone}</strong></p>`
     : '';
@@ -86,9 +88,9 @@ function buildEmailHtml(params: {
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">開催地</td><td>${params.placeJa}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">日程</td><td>${params.dateRange}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">集合時間</td><td>${params.checkinTime}</td></tr>
-        <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">集合方法</td><td>${meet}</td></tr>
+        <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">集合方法</td><td>${meetJa}</td></tr>
         ${row('集合場所の詳細', params.meetingPointJa)}
-        ${mapRow}
+        ${mapRow('地図')}
         ${row('持ち物', params.belongingsJa)}
       </table>
       ${contactNote}
@@ -100,7 +102,9 @@ function buildEmailHtml(params: {
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">Location</td><td>${params.placeEn}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">Dates</td><td>${params.dateRange}</td></tr>
         <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">Check-in time</td><td>${params.checkinTime}</td></tr>
+        <tr><td style="padding: 4px 12px 4px 0; color: #6a665c;">Meeting method</td><td>${meetEn}</td></tr>
         ${row('Meeting point', params.meetingPointEn)}
+        ${mapRow('Map')}
         ${row('What to bring', params.belongingsEn)}
       </table>
       <p>We look forward to seeing you.</p>
