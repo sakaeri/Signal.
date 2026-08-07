@@ -99,7 +99,7 @@ export default function ApplyForm() {
   if (!form.emergencyRelation.trim()) missingFieldLabels.push(t.labelEmergencyRelation.replace(' *', ''));
   if (!form.emergencyPhone.trim()) missingFieldLabels.push(t.labelEmergencyPhone.replace(' *', ''));
   if (selectedEvent && selectedEvent.remaining > 0 && !paymentIsReady) {
-    missingFieldLabels.push(t.paymentAmountLabel);
+    missingFieldLabels.push(t.paymentInfoLabel);
   }
 
   // Reset per-payment-method readiness whenever the selected event (and thus amount) changes.
