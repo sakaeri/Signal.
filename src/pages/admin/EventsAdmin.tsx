@@ -20,7 +20,7 @@ import {
   cancelApplication,
   type ApplicationStatusField,
 } from '../../lib/applicationsAdmin';
-import { sendVenueInfoEmail } from '../../lib/api';
+import { sendVenueInfoEmail, sendLetterMailedEmail } from '../../lib/api';
 import { publicUrlFor } from '../../lib/storage';
 import { formatDateLabel, formatCheckinTime } from '../../lib/formatDate';
 import { useAuth } from '../../context/AuthContext';
@@ -405,6 +405,19 @@ export default function EventsAdmin() {
     }
   }
 
+  async function handleSendLetterMailedEmail(app: DbApplication) {
+    if (!confirm(`${app.name}様(${app.email})に「お手紙を発送しました」メールを送信しますか?`)) return;
+    setSendingEmailId(app.id);
+    try {
+      await sendLetterMailedEmail(app.id);
+      setApplications((prev) => prev.map((a) => (a.id === app.id ? { ...a, status_letter_mailed: true } : a)));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSendingEmailId(null);
+    }
+  }
+
   async function handleCancelApplication(app: DbApplication) {
     const warning = app.payment_intent_id
       ? `${app.name}様の申し込みをキャンセルし、決済分を全額返金します。よろしいですか?この操作は取り消せません。`
@@ -571,6 +584,16 @@ export default function EventsAdmin() {
                   onClick={() => handleSendVenueEmail(a)}
                 >
                   {sendingEmailId === a.id ? '送信中…' : '→ 案内メールを送信'}
+                </button>
+              ) : next.field === 'status_letter_mailed' ? (
+                <button
+                  type="button"
+                  className="admin-button admin-button-secondary"
+                  style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                  disabled={sendingEmailId === a.id}
+                  onClick={() => handleSendLetterMailedEmail(a)}
+                >
+                  {sendingEmailId === a.id ? '送信中…' : '→ 発送メールを送信'}
                 </button>
               ) : (
                 <button

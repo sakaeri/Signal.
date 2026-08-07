@@ -96,6 +96,26 @@ export async function sendVenueInfoEmail(applicationId: string): Promise<void> {
 }
 
 /**
+ * Sends the letter-mailed notification via the send-letter-mailed-email Edge
+ * Function and marks status_letter_mailed = true. Triggered from the admin
+ * dashboard when the 手紙郵送 step is checked off.
+ */
+export async function sendLetterMailedEmail(applicationId: string): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) return;
+  const { data, error } = await supabase.functions.invoke('send-letter-mailed-email', {
+    body: { applicationId },
+  });
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null);
+      throw new Error(body?.error ?? error.message);
+    }
+    throw error;
+  }
+  if (!data?.ok) throw new Error(data?.error ?? 'メール送信に失敗しました。');
+}
+
+/**
  * Calls the refund-orphaned-payment Edge Function: for the case where a Stripe
  * payment succeeded but saving the application afterward failed, so the guest
  * would otherwise be charged with no booking on record.
