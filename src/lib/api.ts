@@ -92,3 +92,25 @@ export async function sendVenueInfoEmail(applicationId: string): Promise<void> {
   }
   if (!data?.ok) throw new Error(data?.error ?? 'メール送信に失敗しました。');
 }
+
+/**
+ * Calls the refund-orphaned-payment Edge Function: for the case where a Stripe
+ * payment succeeded but saving the application afterward failed, so the guest
+ * would otherwise be charged with no booking on record.
+ */
+export async function refundOrphanedPayment(paymentIntentId: string, saveError: string): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('Supabase is not configured.');
+  }
+  const { data, error } = await supabase.functions.invoke('refund-orphaned-payment', {
+    body: { paymentIntentId, saveError },
+  });
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null);
+      throw new Error(body?.error ?? error.message);
+    }
+    throw error;
+  }
+  if (!data?.refunded) throw new Error(data?.error ?? '返金に失敗しました。');
+}
