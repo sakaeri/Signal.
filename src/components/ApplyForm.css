@@ -180,6 +180,12 @@
   text-align: center;
 }
 
+.apply-submit-hint {
+  font-size: 12.5px;
+  color: #c67c4e;
+  text-align: center;
+}
+
 @media (max-width: 560px) {
   .apply-field-row {
     flex-direction: column;
