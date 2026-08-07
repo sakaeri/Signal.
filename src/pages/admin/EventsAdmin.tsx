@@ -474,6 +474,187 @@ export default function EventsAdmin() {
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
   }).length;
 
+  function renderApplicantRow(a: DbApplication) {
+    const next = STATUS_FIELDS.find((s) => !a[s.field]);
+    return (
+      <tr key={a.id} style={a.canceled_at ? { opacity: 0.5 } : undefined}>
+        <td style={{ whiteSpace: 'nowrap' }}>{new Date(a.created_at).toLocaleString('ja-JP')}</td>
+        <td style={{ minWidth: 160 }}>
+          <div>{a.name}</div>
+          <div className="admin-muted" style={{ fontSize: 12 }}>
+            {a.email}
+          </div>
+          <div className="admin-muted" style={{ fontSize: 12 }}>
+            {a.country} ・ {a.phone}
+          </div>
+        </td>
+        <td style={{ minWidth: 140 }}>
+          {a.emergency_name}({a.emergency_relation}) / {a.emergency_phone}
+        </td>
+        <td style={{ maxWidth: 160 }}>
+          {a.message ? (
+            <button
+              type="button"
+              onClick={() => setMessageModalText(a.message)}
+              style={{
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontSize: 13,
+                textAlign: 'left',
+                color: '#2a2a24',
+                borderBottom: '1px dashed rgba(42,42,36,0.3)',
+                display: 'block',
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {a.message}
+            </button>
+          ) : (
+            '—'
+          )}
+        </td>
+        <td>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+            {STATUS_FIELDS.filter((s) => a[s.field]).map((s) => (
+              <div key={s.field} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  title="取り消す"
+                  onClick={() => {
+                    if (confirm(`「${s.label}」を未対応に戻しますか?`)) handleToggleStatus(a, s.field);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    fontSize: 12,
+                    color: 'var(--color-ink-mute)',
+                    cursor: 'pointer',
+                    textDecoration: 'line-through',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  ✓ {s.label}
+                </button>
+                {s.field === 'status_venue_info_sent' && (
+                  <button
+                    type="button"
+                    title="場所や持ち物を修正した後など、最新情報を送り直します(件名に【更新】と付きます)"
+                    disabled={sendingEmailId === a.id}
+                    onClick={() => handleSendVenueEmail(a)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      fontSize: 12,
+                      color: '#c67c4e',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {sendingEmailId === a.id ? '送信中…' : '更新を再送'}
+                  </button>
+                )}
+              </div>
+            ))}
+            {next ? (
+              next.field === 'status_venue_info_sent' ? (
+                <button
+                  type="button"
+                  className="admin-button admin-button-secondary"
+                  style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                  disabled={sendingEmailId === a.id}
+                  onClick={() => handleSendVenueEmail(a)}
+                >
+                  {sendingEmailId === a.id ? '送信中…' : '→ 案内メールを送信'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="admin-button admin-button-secondary"
+                  style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    if (confirm(`${a.name}様の「${next.label}」を完了にしますか?`)) handleToggleStatus(a, next.field);
+                  }}
+                >
+                  → {next.label}
+                </button>
+              )
+            ) : (
+              <span style={{ fontSize: 12, fontWeight: 600 }}>対応完了</span>
+            )}
+          </div>
+        </td>
+        <td>
+          <button
+            type="button"
+            onClick={() => setNotesModalAppId(a.id)}
+            style={{
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: 13,
+              textAlign: 'left',
+              color: notes.some((n) => n.application_id === a.id) ? '#2a2a24' : '#9a9686',
+              borderBottom: '1px dashed rgba(42,42,36,0.3)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {(() => {
+              const count = notes.filter((n) => n.application_id === a.id).length;
+              return count > 0 ? `メモ ${count}件` : 'メモを追加';
+            })()}
+          </button>
+        </td>
+        <td>
+          {a.canceled_at ? (
+            <span style={{ fontSize: 12, color: '#9a9686' }}>
+              キャンセル済み{a.refunded_at ? '(返金済み)' : ''}
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="admin-button admin-button-danger"
+              style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
+              disabled={cancelingId === a.id}
+              onClick={() => handleCancelApplication(a)}
+            >
+              {cancelingId === a.id ? '処理中…' : 'キャンセル'}
+            </button>
+          )}
+        </td>
+      </tr>
+    );
+  }
+
+  function renderApplicantsTable(rows: DbApplication[]) {
+    if (rows.length === 0) {
+      return <div className="admin-empty">申し込みはまだありません。</div>;
+    }
+    return (
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>申込日時</th>
+              <th>お客様情報</th>
+              <th>緊急連絡先</th>
+              <th>ご要望</th>
+              <th>対応状況</th>
+              <th>対応メモ</th>
+              <th>キャンセル</th>
+            </tr>
+          </thead>
+          <tbody>{rows.map(renderApplicantRow)}</tbody>
+        </table>
+      </div>
+    );
+  }
+
   function renderEventRow(ev: DbEvent) {
     const thumb = images.find((i) => i.event_id === ev.id && i.role === 'thumbnail');
     const applicants = applications.filter((a) => a.event_id === ev.id);
@@ -535,183 +716,7 @@ export default function EventsAdmin() {
                 CSVダウンロード
               </button>
             </div>
-            {applicants.length === 0 ? (
-              <div className="admin-empty">申し込みはまだありません。</div>
-            ) : (
-              <div className="admin-table-wrap">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>申込日時</th>
-                      <th>お客様情報</th>
-                      <th>緊急連絡先</th>
-                      <th>ご要望</th>
-                      <th>対応状況</th>
-                      <th>対応メモ</th>
-                      <th>キャンセル</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {applicants.map((a) => {
-                      const next = STATUS_FIELDS.find((s) => !a[s.field]);
-                      return (
-                      <tr key={a.id} style={a.canceled_at ? { opacity: 0.5 } : undefined}>
-                        <td style={{ whiteSpace: 'nowrap' }}>{new Date(a.created_at).toLocaleString('ja-JP')}</td>
-                        <td style={{ minWidth: 160 }}>
-                          <div>{a.name}</div>
-                          <div className="admin-muted" style={{ fontSize: 12 }}>
-                            {a.email}
-                          </div>
-                          <div className="admin-muted" style={{ fontSize: 12 }}>
-                            {a.country} ・ {a.phone}
-                          </div>
-                        </td>
-                        <td style={{ minWidth: 140 }}>
-                          {a.emergency_name}({a.emergency_relation}) / {a.emergency_phone}
-                        </td>
-                        <td style={{ maxWidth: 160 }}>
-                          {a.message ? (
-                            <button
-                              type="button"
-                              onClick={() => setMessageModalText(a.message)}
-                              style={{
-                                border: 'none',
-                                background: 'none',
-                                cursor: 'pointer',
-                                fontSize: 13,
-                                textAlign: 'left',
-                                color: '#2a2a24',
-                                borderBottom: '1px dashed rgba(42,42,36,0.3)',
-                                display: 'block',
-                                maxWidth: '100%',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {a.message}
-                            </button>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                            {STATUS_FIELDS.filter((s) => a[s.field]).map((s) => (
-                              <div key={s.field} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <button
-                                  type="button"
-                                  title="取り消す"
-                                  onClick={() => {
-                                    if (confirm(`「${s.label}」を未対応に戻しますか?`)) handleToggleStatus(a, s.field);
-                                  }}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    padding: 0,
-                                    fontSize: 12,
-                                    color: 'var(--color-ink-mute)',
-                                    cursor: 'pointer',
-                                    textDecoration: 'line-through',
-                                    whiteSpace: 'nowrap',
-                                  }}
-                                >
-                                  ✓ {s.label}
-                                </button>
-                                {s.field === 'status_venue_info_sent' && (
-                                  <button
-                                    type="button"
-                                    title="場所や持ち物を修正した後など、最新情報を送り直します(件名に【更新】と付きます)"
-                                    disabled={sendingEmailId === a.id}
-                                    onClick={() => handleSendVenueEmail(a)}
-                                    style={{
-                                      background: 'none',
-                                      border: 'none',
-                                      padding: 0,
-                                      fontSize: 12,
-                                      color: '#c67c4e',
-                                      cursor: 'pointer',
-                                      whiteSpace: 'nowrap',
-                                    }}
-                                  >
-                                    {sendingEmailId === a.id ? '送信中…' : '更新を再送'}
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            {next ? (
-                              next.field === 'status_venue_info_sent' ? (
-                                <button
-                                  type="button"
-                                  className="admin-button admin-button-secondary"
-                                  style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
-                                  disabled={sendingEmailId === a.id}
-                                  onClick={() => handleSendVenueEmail(a)}
-                                >
-                                  {sendingEmailId === a.id ? '送信中…' : '→ 案内メールを送信'}
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="admin-button admin-button-secondary"
-                                  style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
-                                  onClick={() => {
-                                    if (confirm(`${a.name}様の「${next.label}」を完了にしますか?`)) handleToggleStatus(a, next.field);
-                                  }}
-                                >
-                                  → {next.label}
-                                </button>
-                              )
-                            ) : (
-                              <span style={{ fontSize: 12, fontWeight: 600 }}>対応完了</span>
-                            )}
-                          </div>
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            onClick={() => setNotesModalAppId(a.id)}
-                            style={{
-                              border: 'none',
-                              background: 'none',
-                              cursor: 'pointer',
-                              fontSize: 13,
-                              textAlign: 'left',
-                              color: notes.some((n) => n.application_id === a.id) ? '#2a2a24' : '#9a9686',
-                              borderBottom: '1px dashed rgba(42,42,36,0.3)',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {(() => {
-                              const count = notes.filter((n) => n.application_id === a.id).length;
-                              return count > 0 ? `メモ ${count}件` : 'メモを追加';
-                            })()}
-                          </button>
-                        </td>
-                        <td>
-                          {a.canceled_at ? (
-                            <span style={{ fontSize: 12, color: '#9a9686' }}>
-                              キャンセル済み{a.refunded_at ? '(返金済み)' : ''}
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              className="admin-button admin-button-danger"
-                              style={{ padding: '6px 12px', fontSize: 12, whiteSpace: 'nowrap' }}
-                              disabled={cancelingId === a.id}
-                              onClick={() => handleCancelApplication(a)}
-                            >
-                              {cancelingId === a.id ? '処理中…' : 'キャンセル'}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            {renderApplicantsTable(applicants)}
           </div>
         )}
       </div>
