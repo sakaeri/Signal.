@@ -86,6 +86,22 @@ export default function ApplyForm() {
       paymentIsReady,
   );
 
+  // Named so the disabled submit button isn't just silently unclickable —
+  // shown as a hint listing what's still missing.
+  const missingFieldLabels: string[] = [];
+  if (!eventId || !selectedEvent) missingFieldLabels.push(t.labelEvent.replace(' *', ''));
+  else if (selectedEvent.remaining <= 0) missingFieldLabels.push(t.soldOutLabel);
+  if (!form.name.trim()) missingFieldLabels.push(t.labelName.replace(' *', ''));
+  if (!EMAIL_RE.test(form.email)) missingFieldLabels.push(t.labelEmail.replace(' *', ''));
+  if (!form.country) missingFieldLabels.push(t.labelCountry.replace(' *', ''));
+  if (!form.phone.trim()) missingFieldLabels.push(t.labelPhone.replace(' *', ''));
+  if (!form.emergencyName.trim()) missingFieldLabels.push(t.labelEmergencyName.replace(' *', ''));
+  if (!form.emergencyRelation.trim()) missingFieldLabels.push(t.labelEmergencyRelation.replace(' *', ''));
+  if (!form.emergencyPhone.trim()) missingFieldLabels.push(t.labelEmergencyPhone.replace(' *', ''));
+  if (selectedEvent && selectedEvent.remaining > 0 && !paymentIsReady) {
+    missingFieldLabels.push(t.paymentAmountLabel);
+  }
+
   // Reset per-payment-method readiness whenever the selected event (and thus amount) changes.
   useEffect(() => {
     setPaymentReady(false);
@@ -337,6 +353,11 @@ export default function ApplyForm() {
             <button type="submit" className="apply-submit" disabled={!canSubmit || submitting}>
               {submitting ? '…' : t.submitLabel}
             </button>
+            {!canSubmit && !submitting && missingFieldLabels.length > 0 && (
+              <div className="apply-submit-hint">
+                {t.incompleteFieldsPrefix} {missingFieldLabels.join(lang === 'ja' ? '、' : ', ')}
+              </div>
+            )}
             {submitError && <div className="apply-submit-error">{submitError}</div>}
             <div className="apply-submit-note">{t.submitNote}</div>
           </form>

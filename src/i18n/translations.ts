@@ -50,6 +50,7 @@ export interface Translations {
   labelCvc: string;
   submitLabel: string;
   submitNote: string;
+  incompleteFieldsPrefix: string;
   faqTitle: string;
   footerOrganizer: string;
   footerContact: string;
@@ -109,6 +110,7 @@ export const TRANSLATIONS: Record<Lang, Translations> = {
     labelCvc: 'セキュリティコード *',
     submitLabel: '支払いして申し込む',
     submitNote: '安全な決済ページで処理されます',
+    incompleteFieldsPrefix: '次の項目が未入力または未確認です:',
     faqTitle: 'よくある質問',
     footerOrganizer: '主催: Signal. 運営事務局',
     footerContact: 'お問い合わせ: info@signal-retreat.jp',
@@ -165,6 +167,7 @@ export const TRANSLATIONS: Record<Lang, Translations> = {
     labelCvc: 'Security code *',
     submitLabel: 'Pay and apply',
     submitNote: 'Processed on a secure payment page',
+    incompleteFieldsPrefix: 'Please complete the following:',
     faqTitle: 'Frequently Asked Questions',
     footerOrganizer: 'Organized by: Signal. Secretariat',
     footerContact: 'Contact: info@signal-retreat.jp',
