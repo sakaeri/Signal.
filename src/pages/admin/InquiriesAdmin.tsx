@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchInbox, fetchThread, sendReply, type InboxMessage, type ThreadMessage } from '../../lib/inquiriesAdmin';
+import { fetchInbox, fetchThread, type InboxMessage, type ThreadMessage } from '../../lib/inquiriesAdmin';
 import './Admin.css';
 
 function parseFromHeader(from: string): { name: string; email: string } {
@@ -20,8 +20,6 @@ export default function InquiriesAdmin({ onUnreadCountChange }: InquiriesAdminPr
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [thread, setThread] = useState<ThreadMessage[] | null>(null);
   const [threadLoading, setThreadLoading] = useState(false);
-  const [replyDraft, setReplyDraft] = useState('');
-  const [sending, setSending] = useState(false);
 
   async function reload() {
     setLoading(true);
@@ -46,39 +44,12 @@ export default function InquiriesAdmin({ onUnreadCountChange }: InquiriesAdminPr
     setSelectedThreadId(msg.threadId);
     setThread(null);
     setThreadLoading(true);
-    setReplyDraft('');
     try {
-      const msgs = await fetchThread(msg.threadId);
-      setThread(msgs);
-      const remainingUnread = (messages ?? []).filter((m) => m.threadId !== msg.threadId && m.unread).length;
-      setMessages((prev) => prev?.map((m) => (m.threadId === msg.threadId ? { ...m, unread: false } : m)) ?? prev);
-      onUnreadCountChange?.(remainingUnread);
+      setThread(await fetchThread(msg.threadId));
     } catch (e) {
       alert(e instanceof Error ? e.message : String(e));
     } finally {
       setThreadLoading(false);
-    }
-  }
-
-  async function handleSendReply() {
-    if (!selectedThreadId || !thread || thread.length === 0 || !replyDraft.trim()) return;
-    const last = thread[thread.length - 1];
-    const { email } = parseFromHeader(last.from);
-    setSending(true);
-    try {
-      await sendReply({
-        threadId: selectedThreadId,
-        to: email,
-        subject: last.subject,
-        body: replyDraft.trim(),
-        inReplyTo: last.messageIdHeader,
-      });
-      setReplyDraft('');
-      setThread(await fetchThread(selectedThreadId));
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSending(false);
     }
   }
 
@@ -123,27 +94,15 @@ export default function InquiriesAdmin({ onUnreadCountChange }: InquiriesAdminPr
               ))}
             </div>
 
-            <div className="admin-card">
-              <div className="admin-section-title" style={{ fontSize: 14 }}>
-                返信する
-              </div>
-              <div className="admin-field" style={{ marginBottom: 12 }}>
-                <textarea
-                  style={{ minHeight: 120, width: '100%', boxSizing: 'border-box' }}
-                  placeholder="返信内容を入力…"
-                  value={replyDraft}
-                  onChange={(e) => setReplyDraft(e.target.value)}
-                />
-              </div>
-              <button
-                type="button"
-                className="admin-button"
-                disabled={sending || !replyDraft.trim()}
-                onClick={handleSendReply}
-              >
-                {sending ? '送信中…' : '返信を送信'}
-              </button>
-            </div>
+            <a
+              href="https://mail.google.com/mail/u/0/#all"
+              target="_blank"
+              rel="noreferrer"
+              className="admin-button"
+              style={{ display: 'inline-block', textDecoration: 'none' }}
+            >
+              Gmailで開いて返信する
+            </a>
           </>
         )}
       </div>

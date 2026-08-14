@@ -10,7 +10,8 @@
 //
 // Admin-only: lists the most recent messages in the signal@s-stylegolf.com
 // inbox via the Gmail API, so the dashboard can show an inbox without a
-// separate email-syncing database table.
+// separate email-syncing database table. Read-only (gmail.readonly scope) —
+// replying happens in Gmail itself, not this app.
 
 import { createClient } from 'npm:@supabase/supabase-js@^2.45.0';
 

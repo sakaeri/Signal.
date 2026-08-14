@@ -3,10 +3,10 @@
 // Deploy via the Supabase dashboard's Edge Functions "Via Editor", or:
 //   supabase functions deploy gmail-get-thread
 // Requires the same GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN
-// secrets as gmail-list-inbox.
+// secrets as gmail-list-inbox. Read-only (gmail.readonly scope) — replying
+// happens in Gmail itself, not this app.
 //
-// Admin-only: fetches every message in a Gmail thread (full body, decoded),
-// and marks any unread messages in it as read.
+// Admin-only: fetches every message in a Gmail thread (full body, decoded).
 
 import { createClient } from 'npm:@supabase/supabase-js@^2.45.0';
 
@@ -139,20 +139,6 @@ Deno.serve(async (req) => {
         unread: (msg.labelIds ?? []).includes('UNREAD'),
       };
     });
-
-    // Best-effort: mark unread messages in this thread as read now that they've been opened.
-    const unreadIds = rawMessages
-      .filter((m: { labelIds?: string[] }) => (m.labelIds ?? []).includes('UNREAD'))
-      .map((m: { id: string }) => m.id);
-    await Promise.all(
-      unreadIds.map((id: string) =>
-        fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}/modify`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ removeLabelIds: ['UNREAD'] }),
-        }).catch((e) => console.error('[gmail-get-thread] failed to mark read', id, e)),
-      ),
-    );
 
     return new Response(JSON.stringify({ ok: true, messages }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

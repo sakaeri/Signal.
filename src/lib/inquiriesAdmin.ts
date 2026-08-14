@@ -46,13 +46,3 @@ export async function fetchThread(threadId: string): Promise<ThreadMessage[]> {
   const data = await invoke<{ messages: ThreadMessage[] }>('gmail-get-thread', { threadId });
   return data.messages;
 }
-
-export async function sendReply(params: {
-  threadId: string;
-  to: string;
-  subject: string;
-  body: string;
-  inReplyTo: string;
-}): Promise<void> {
-  await invoke('gmail-send-reply', params);
-}
