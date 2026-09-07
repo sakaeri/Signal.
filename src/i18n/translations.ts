@@ -113,7 +113,7 @@ export const TRANSLATIONS: Record<Lang, Translations> = {
     incompleteFieldsPrefix: '次の項目が未入力または未確認です:',
     faqTitle: 'よくある質問',
     footerOrganizer: '主催: Signal. 運営事務局',
-    footerContact: 'お問い合わせ: info@signal-retreat.jp',
+    footerContact: 'お問い合わせ: signal@s-stylegolf.com',
     footerCopyright: '© 2026 Signal. All rights reserved.',
   },
   en: {
@@ -170,7 +170,7 @@ export const TRANSLATIONS: Record<Lang, Translations> = {
     incompleteFieldsPrefix: 'Please complete the following:',
     faqTitle: 'Frequently Asked Questions',
     footerOrganizer: 'Organized by: Signal. Secretariat',
-    footerContact: 'Contact: info@signal-retreat.jp',
+    footerContact: 'Contact: signal@s-stylegolf.com',
     footerCopyright: '© 2026 Signal. All rights reserved.',
   },
 };
