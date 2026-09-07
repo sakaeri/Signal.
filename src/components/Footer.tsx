@@ -13,7 +13,7 @@ export default function Footer() {
         {t.footerContact}
       </div>
       <a
-        href="https://instagram.com/signal.retreat"
+        href="https://www.instagram.com/signal.experience01"
         target="_blank"
         rel="noreferrer"
         className="footer-instagram"
